@@ -24,7 +24,7 @@ declare global {
   }
 }
 
-const CF_SITE_KEY = "1x00000000000000000000AA"; // dev test key
+const CF_SITE_KEY = "1x00000000000000000000AA";// dev test key
 
 export default function AdminLoginPage() {
   const router = useRouter();
