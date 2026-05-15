@@ -239,7 +239,22 @@ export const SOCIAL_LINKS = [
 ];
 
 // Teams Data — tambahkan team baru di sini
-export const TEAMS = [
-  
-      
+// constants.ts
+export type TeamData = {
+  id: string;
+  name: string;
+  tag: string;
+  logo: string;
+  activeMemberCount: number;
+  ownerName: string;
+  ownerWhatsapp: string;
+  description: string;
+  badge: "OPEN" | "PENUH";
+  gradient: string;
+  accentColor: string;
+  glowColor: string;
+};
+
+export const TEAMS: TeamData[] = [
+  // tambah team di sini nanti
 ];

@@ -7,7 +7,9 @@ import {
   Shield, LogOut, Settings, Users, FileText, Server,
   ChevronRight, Save, Plus, Trash2, Edit3, Check, X,
   AlertTriangle, Loader2, RefreshCw, Eye, EyeOff, Crown,
-  Activity, Lock, Image, Link, Star, BarChart2, Play, Youtube, Bell
+  Activity, Lock, Link, BarChart2, Star, Play, Youtube, Bell,
+  Trophy,
+  Image
 } from 'lucide-react';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -89,7 +91,7 @@ export default function AdminDashboard() {
     { id: 'team', label: 'Team/Clan', icon: Shield },
     { id: 'gallery', label: 'Galeri', icon: Image },
     { id: 'tutorial', label: 'Tutorial', icon: Play },
-    { id: 'achievements', label: 'Achievements', icon: Star },
+    { id: 'achievements', label: 'Achievements', icon: Trophy },
     { id: 'ranks', label: 'Ranks', icon: Crown },
     { id: 'store-settings', label: 'Store Settings', icon: Settings },
     { id: 'manage-admins', label: 'Kelola Admin', icon: Crown, superOnly: true },
@@ -1019,14 +1021,6 @@ function ManageAdminsSection({ admin }: { admin: AdminUser }) {
 // Activity Log Section
 // ─────────────────────────────────────────────────────────────────────────────
 function ActivitySection() {
-  const [logs, setLogs] = useState<{ id: string; admin_username: string; action: string; details: Record<string, unknown> | null; ip_address: string; created_at: string }[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    // Simple fetch of recent activity (we'd need an API route for this in full impl)
-    // For now show placeholder with explanation
-    setLoading(false);
-  }, []);
 
   return (
     <div>
