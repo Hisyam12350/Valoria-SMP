@@ -26,6 +26,9 @@ export function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const pathname = usePathname();
 
+  // Jangan tampilkan navbar di halaman admin
+  if (pathname.startsWith('/admin')) return null;
+
   const isActive = (href: string) => {
     if (href === '/') return pathname === '/';
     return pathname.startsWith(href);
