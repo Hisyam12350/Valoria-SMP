@@ -6,6 +6,7 @@ import { Navbar } from "@/components/navbar";
 import { Footer } from "@/components/footer";
 import { MusicPlayer } from "@/components/music-player";
 import { BACKGROUND_IMAGE } from "@/lib/constants";
+import Script from "next/script";
 
 const minecraftFont = Press_Start_2P({
   weight: "400",
@@ -26,8 +27,18 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "VALORIA SMP - Server Minecraft Survival Indonesia",
-  description: "Server Minecraft Survival Indonesia terbaik dengan fitur lengkap, rank eksklusif, dan komunitas yang aktif. Join sekarang di play.valoriasmp.my.id",
-  keywords: ["Minecraft", "Server", "SMP", "Survival", "Indonesia", "VALORIA", "Gaming", "Multiplayer"],
+  description:
+    "Server Minecraft Survival Indonesia terbaik dengan fitur lengkap, rank eksklusif, dan komunitas yang aktif. Join sekarang di play.valoriasmp.my.id",
+  keywords: [
+    "Minecraft",
+    "Server",
+    "SMP",
+    "Survival",
+    "Indonesia",
+    "VALORIA",
+    "Gaming",
+    "Multiplayer",
+  ],
   authors: [{ name: "VALORIA SMP Team" }],
   icons: {
     icon: "https://image2url.com/r2/default/images/1773117137406-9d62e3e7-6d56-4190-b725-f0ca7a59c0e6.jpg",
@@ -50,7 +61,9 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "VALORIA SMP - Server Minecraft Survival Indonesia",
     description: "Server Minecraft Survival Indonesia terbaik. Join sekarang!",
-    images: ["https://image2url.com/r2/default/images/1773117137406-9d62e3e7-6d56-4190-b725-f0ca7a59c0e6.jpg"],
+    images: [
+      "https://image2url.com/r2/default/images/1773117137406-9d62e3e7-6d56-4190-b725-f0ca7a59c0e6.jpg",
+    ],
   },
 };
 
@@ -61,28 +74,31 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="id" suppressHydrationWarning>
+      <Script
+        src="https://app.sandbox.midtrans.com/snap/snap.js"
+        data-client-key={process.env.NEXT_PUBLIC_MIDTRANS_CLIENT_KEY}
+        strategy="afterInteractive"
+      />
       <body
         className={`${minecraftFont.variable} ${geistSans.variable} ${geistMono.variable} antialiased bg-background text-foreground`}
       >
         {/* Fixed Background */}
-        <div 
+        <div
           className="fixed inset-0 bg-cover bg-center bg-no-repeat -z-10"
           style={{ backgroundImage: `url(${BACKGROUND_IMAGE})` }}
         />
-        
+
         {/* Dark Overlay */}
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm -z-10" />
-        
+
         {/* Content */}
         <div className="relative z-10 flex flex-col min-h-screen">
           <Navbar />
-          <main className="flex-1">
-            {children}
-          </main>
+          <main className="flex-1">{children}</main>
           <Footer />
           <MusicPlayer />
         </div>
-        
+
         <Toaster />
       </body>
     </html>

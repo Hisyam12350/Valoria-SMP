@@ -26,6 +26,7 @@ export const NAV_ITEMS = [
 // Ranks Data
 export const RANKS = [
   {
+    slug: "street",
     name: 'STREET',
     originalPriceNum: 15000,
     discount: 0,
@@ -35,6 +36,7 @@ export const RANKS = [
     bonus: { claimblock: '15.000', claim: '6x', sethome: '6x', money: '$150.000' },
   },
   {
+    slug: "valiant",
     name: 'VALIANT',
     originalPriceNum: 35000,
     discount: 0,
@@ -44,6 +46,7 @@ export const RANKS = [
     bonus: { claimblock: '35.000', claim: '9x', sethome: '9x', money: '$350.000' },
   },
   {
+    slug: "astra",
     name: 'ASTRA',
     originalPriceNum: 65000,
     discount: 0,
@@ -53,6 +56,7 @@ export const RANKS = [
     bonus: { claimblock: '70.000', claim: '12x', sethome: '12x', money: '$600.000' },
   },
   {
+    slug: "crystall",
     name: 'CRYSTALL',
     originalPriceNum: 120000,
     discount: 0,
@@ -63,6 +67,7 @@ export const RANKS = [
     popular: true,
   },
   {
+    slug: "ethereal",
     name: 'ETHEREAL',
     originalPriceNum: 150000,
     discount: 0,
@@ -73,6 +78,7 @@ export const RANKS = [
     top: true,
   },
   {
+    slug: "sovereign",
     name: 'SOVEREIGN',
     originalPriceNum: 300000,
     discount: 0,
