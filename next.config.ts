@@ -9,4 +9,7 @@ const nextConfig: NextConfig = {
   reactStrictMode: false,
 };
 
+module.exports = {
+  allowedDevOrigins: ["meredith-toylike-jeana.ngrok-free.dev"],
+};
 export default nextConfig;

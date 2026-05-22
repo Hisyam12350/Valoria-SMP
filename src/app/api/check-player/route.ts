@@ -1,70 +1,64 @@
-import { NextRequest, NextResponse } from "next/server";
-import { getMysqlConnection } from "@/lib/mysql";
+import { NextResponse } from "next/server";
+import mysql from "mysql2/promise";
 
-interface PlayerRow {
-  uuid: string;
-  username: string;
-  primary_group: string;
-}
-
-export async function POST(req: NextRequest) {
+export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const username = body?.username;
+    const { username } = body;
 
-    if (!username) {
+    if (!username || !username.trim()) {
       return NextResponse.json(
         {
-          success: false,
-          message: "Username wajib diisi",
+          found: false,
+          error: "Username wajib diisi",
         },
-        { status: 400 }
+        {
+          status: 400,
+        }
       );
     }
 
-    const db = await getMysqlConnection();
+    const connection = await mysql.createConnection({
+      host: process.env.MYSQL_HOST,
+      port: Number(process.env.MYSQL_PORT),
+      user: process.env.MYSQL_USER,
+      password: process.env.MYSQL_PASSWORD,
+      database: process.env.MYSQL_DATABASE,
+    });
 
-    const [rows] = await db.execute(
+    const [rows]: any = await connection.execute(
       `
-      SELECT uuid, username, primary_group
+      SELECT uuid, username
       FROM luckperms_players
-      WHERE LOWER(username) = LOWER(?)
+      WHERE username = ?
       LIMIT 1
       `,
       [username]
     );
 
-    const players = rows as PlayerRow[];
+    await connection.end();
 
-    if (!players.length) {
-      return NextResponse.json(
-        {
-          success: false,
-          message: "Akun tidak ditemukan",
-        },
-        { status: 404 }
-      );
+    if (rows.length === 0) {
+      return NextResponse.json({
+        found: false,
+      });
     }
 
-    const player = players[0];
-
     return NextResponse.json({
-      success: true,
-      player: {
-        uuid: player.uuid,
-        username: player.username,
-        primary_group: player.primary_group,
-      },
+      found: true,
+      user: rows[0],
     });
   } catch (error) {
-    console.error("CHECK PLAYER ERROR:", error);
+    console.error("CHECK USER ERROR:", error);
 
     return NextResponse.json(
       {
-        success: false,
-        message: "Terjadi kesalahan server",
+        found: false,
+        error: "Server Error",
       },
-      { status: 500 }
+      {
+        status: 500,
+      }
     );
   }
 }

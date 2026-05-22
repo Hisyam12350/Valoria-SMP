@@ -3,15 +3,23 @@ import mysql from "mysql2/promise";
 
 export async function POST(req: Request) {
   try {
-    const { uuid } = await req.json();
+    const body = await req.json();
+    const { username } = body;
 
-    if (!uuid) {
+    // VALIDASI
+    if (!username || !username.trim()) {
       return NextResponse.json(
-        { success: false, message: "UUID wajib diisi" },
-        { status: 400 }
+        {
+          found: false,
+          error: "Username wajib diisi",
+        },
+        {
+          status: 400,
+        }
       );
     }
 
+    // CONNECT MYSQL
     const connection = await mysql.createConnection({
       host: process.env.MYSQL_HOST,
       port: Number(process.env.MYSQL_PORT),
@@ -20,39 +28,42 @@ export async function POST(req: Request) {
       database: process.env.MYSQL_DATABASE,
     });
 
+    // QUERY USER
     const [rows]: any = await connection.execute(
       `
       SELECT uuid, username
       FROM luckperms_players
-      WHERE uuid = ?
+      WHERE username = ?
       LIMIT 1
       `,
-      [uuid]
+      [username]
     );
 
     await connection.end();
 
-    if (!rows.length) {
+    // USER TIDAK ADA
+    if (rows.length === 0) {
       return NextResponse.json({
-        success: false,
         found: false,
       });
     }
 
+    // USER ADA
     return NextResponse.json({
-      success: true,
       found: true,
       user: rows[0],
     });
   } catch (error) {
-    console.error(error);
+    console.error("CHECK USER ERROR:", error);
 
     return NextResponse.json(
       {
-        success: false,
-        message: "Server error",
+        found: false,
+        error: "Server Error",
       },
-      { status: 500 }
+      {
+        status: 500,
+      }
     );
   }
 }

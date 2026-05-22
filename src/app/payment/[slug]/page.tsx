@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@radix-ui/react-label";
+import { Label } from "@/components/ui/label";
 
 declare global {
   interface Window {
@@ -27,9 +27,9 @@ export default function PaymentPage() {
 
   const [rank, setRank] = useState<Rank | null>(null);
   const [username, setUsername] = useState("");
+  const [uuid, setUuid] = useState("");
   const [loadingPayment, setLoadingPayment] = useState(false);
   const [error, setError] = useState("");
-  const [uuid, setUuid] = useState("");
   const [isChecking, setIsChecking] = useState(false);
   const [isUserFound, setIsUserFound] = useState(false);
 
@@ -63,9 +63,51 @@ export default function PaymentPage() {
     }
   };
 
+  const checkUser = async (value: string) => {
+    if (!value.trim()) {
+      setUuid("");
+      setIsUserFound(false);
+      return;
+    }
+
+    try {
+      setIsChecking(true);
+
+      const res = await fetch("/api/minecraft/check-user", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          username: value,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (data.found) {
+        setUsername(data.user.username);
+        setUuid(data.user.uuid);
+        setIsUserFound(true);
+      } else {
+        setUuid("");
+        setIsUserFound(false);
+      }
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setIsChecking(false);
+    }
+  };
+
   const handlePayment = async () => {
     try {
       if (!rank) return;
+
+      if (!isUserFound) {
+        alert("Username Minecraft tidak ditemukan");
+        return;
+      }
 
       setLoadingPayment(true);
 
@@ -75,8 +117,8 @@ export default function PaymentPage() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          uuid,
           username,
+          uuid,
           productName: rank.name,
           slug: rank.slug,
           price: rank.originalPriceNum,
@@ -123,42 +165,6 @@ export default function PaymentPage() {
     );
   }
 
-  const checkUser = async (value: string) => {
-    if (!value.trim()) {
-      setUsername("");
-      setIsUserFound(false);
-      return;
-    }
-
-    try {
-      setIsChecking(true);
-
-      const res = await fetch("/api/minecraft/check-user", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          uuid: value,
-        }),
-      });
-
-      const data = await res.json();
-
-      if (data.found) {
-        setUsername(data.user.username);
-        setIsUserFound(true);
-      } else {
-        setUsername("");
-        setIsUserFound(false);
-      }
-    } catch (error) {
-      console.error(error);
-    } finally {
-      setIsChecking(false);
-    }
-  };
-
   return (
     <div className="max-w-xl mx-auto p-5 space-y-5">
       <h1 className="text-2xl font-bold">Payment {rank?.name}</h1>
@@ -169,26 +175,18 @@ export default function PaymentPage() {
       </div>
 
       <div className="space-y-2">
-        <Label>UUID Player</Label>
+        <Label>Username Player</Label>
 
         <Input
-          placeholder="Masukkan UUID"
-          value={uuid}
+          placeholder="Masukkan Username Minecraft"
+          value={username}
           onChange={(e) => {
             const value = e.target.value;
 
-            setUuid(value);
+            setUsername(value);
             checkUser(value);
           }}
         />
-
-        <Button
-          onClick={handlePayment}
-          disabled={!isUserFound || loadingPayment}
-          className="w-full"
-        >
-          {loadingPayment ? "Memproses..." : "Bayar Sekarang"}
-        </Button>
 
         {isChecking && (
           <p className="text-sm text-gray-400">Mengecek akun...</p>
@@ -199,13 +197,23 @@ export default function PaymentPage() {
             <p className="text-sm text-green-500">Akun ditemukan</p>
 
             <p className="font-semibold">Username: {username}</p>
+
+            <p className="text-sm text-gray-400 break-all">UUID: {uuid}</p>
           </div>
         )}
 
-        {!isChecking && uuid && !isUserFound && (
-          <p className="text-sm text-red-500">UUID tidak ditemukan</p>
+        {!isChecking && username && !isUserFound && (
+          <p className="text-sm text-red-500">Username tidak ditemukan</p>
         )}
       </div>
+
+      <Button
+        onClick={handlePayment}
+        disabled={!isUserFound || loadingPayment}
+        className="w-full"
+      >
+        {loadingPayment ? "Memproses..." : "Bayar Sekarang"}
+      </Button>
     </div>
   );
 }
