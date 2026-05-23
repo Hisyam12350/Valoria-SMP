@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import midtransClient from "midtrans-client";
 
 const coreApi = new midtransClient.CoreApi({
-  isProduction: false,
+  isProduction: true,
   serverKey: process.env.MIDTRANS_SERVER_KEY!,
   clientKey: process.env.MIDTRANS_CLIENT_KEY!,
 });
