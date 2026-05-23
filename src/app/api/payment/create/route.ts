@@ -21,7 +21,7 @@ export async function POST(req: Request) {
 
     const orderId = `MC-${Date.now()}`;
 
-    let parameter: any = {
+    const parameter: any = {
       transaction_details: {
         order_id: orderId,
         gross_amount: Number(price),

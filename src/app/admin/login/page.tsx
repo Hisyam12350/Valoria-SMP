@@ -12,6 +12,7 @@ import {
   User,
   Loader2,
 } from "lucide-react";
+import Link from "next/link";
 
 declare global {
   interface Window {
@@ -24,7 +25,7 @@ declare global {
   }
 }
 
-const CF_SITE_KEY = "1x00000000000000000000AA";// dev test key
+const CF_SITE_KEY = "1x00000000000000000000AA"; // dev test key
 
 export default function AdminLoginPage() {
   const router = useRouter();
@@ -344,12 +345,11 @@ export default function AdminLoginPage() {
 
         {/* Back to site */}
         <div className="text-center mt-4">
-          <a
-            href="/"
-            className="text-xs text-gray-600 hover:text-gray-400 transition-colors"
-          >
-            ← Kembali ke Website
-          </a>
+          <Link href="/">
+            <a className="text-xs text-gray-600 hover:text-gray-400 transition-colors">
+              ← Kembali ke Website
+            </a>
+          </Link>
         </div>
       </motion.div>
       <Script

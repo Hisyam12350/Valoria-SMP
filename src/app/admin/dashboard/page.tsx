@@ -2027,7 +2027,7 @@ function GallerySection({ admin }: { admin: AdminUser }) {
               )}
               {!photo.url && (
                 <div className="w-16 h-12 bg-white/5 rounded-lg flex-shrink-0 flex items-center justify-center">
-                  <Image className="w-4 h-4 text-gray-600" />
+                  <img className="w-4 h-4 text-gray-600" alt="Placeholder" />
                 </div>
               )}
               <div className="flex-1 grid grid-cols-2 gap-2">
@@ -2755,6 +2755,7 @@ function AchievementsSection({ admin }: { admin: AdminUser }) {
                         {item.photos.map((p, pi) => (
                           <div key={pi} className="relative group">
                             <img
+                              alt="mantap"
                               src={p}
                               className="w-full h-14 object-cover rounded-lg"
                               onError={(e) => {
