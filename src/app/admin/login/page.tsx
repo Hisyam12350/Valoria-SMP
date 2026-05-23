@@ -25,7 +25,8 @@ declare global {
   }
 }
 
-const CF_SITE_KEY = "1x00000000000000000000AA"; // dev test key
+const CF_SITE_KEY =
+  process.env.NEXT_PUBLIC_CF_TURNSTILE_SITE_KEY || "0x4AAAAAADBQccjz_Dzel_jp";
 
 export default function AdminLoginPage() {
   const router = useRouter();
