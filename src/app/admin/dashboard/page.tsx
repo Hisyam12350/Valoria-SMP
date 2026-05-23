@@ -392,8 +392,6 @@ type ToastItem = {
   type: "success" | "error" | "info";
 };
 let toastId = 0;
-let globalAddToast: ((msg: string, type: ToastItem["type"]) => void) | null =
-  null;
 
 function ToastProvider() {
   const [toasts, setToasts] = useState<ToastItem[]>([]);
