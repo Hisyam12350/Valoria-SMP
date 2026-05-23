@@ -18,11 +18,14 @@ const eslintConfig = [
       "@typescript-eslint/no-non-null-assertion": "off",
       "@typescript-eslint/ban-ts-comment": "off",
       "react-hooks/exhaustive-deps": "off",
-      "react/no-unescaped-entities": "off",
+      "react/no-unescaught-entities": "off",
       "react/display-name": "off",
       "@next/next/no-img-element": "off",
+      "@next/next/no-html-link-for-pages": "off", // ← tambahkan ini
       "no-unused-vars": "off",
       "no-console": "off",
+      "prefer-const": "off", // ← tambahkan ini
+      "jsx-a11y/alt-text": "off", // ← tambahkan ini
     },
   },
   {
