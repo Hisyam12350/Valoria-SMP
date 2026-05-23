@@ -100,6 +100,11 @@ export async function POST(req: Request) {
       parameter.payment_type = "akulaku";
     } else if (paymentMethod === "kredivo") {
       parameter.payment_type = "kredivo";
+    } else if (paymentMethod === "credit_card") {
+      parameter.payment_type = "credit_card";
+      parameter.credit_card = {
+        secure: true,
+      };
     }
 
     const transaction = await coreApi.charge(parameter);

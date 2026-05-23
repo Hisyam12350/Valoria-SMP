@@ -38,6 +38,7 @@ const PAYMENT_METHODS = [
   { id: "alfamart", label: "Alfamart", icon: "🏪" },
   { id: "akulaku", label: "Akulaku", icon: "💳" },
   { id: "kredivo", label: "Kredivo", icon: "💳" },
+  { id: "credit_card", label: "Kartu Kredit/Debit", icon: "💳" },
 ];
 
 export default function PaymentPage() {
@@ -53,6 +54,21 @@ export default function PaymentPage() {
   const [isUserFound, setIsUserFound] = useState(false);
   const [selectedMethod, setSelectedMethod] = useState("");
   const [showAllPayments, setShowAllPayments] = useState(false);
+  const [discountCode, setDiscountCode] = useState("");
+  const [discountAmount, setDiscountAmount] = useState(0);
+  const [discountError, setDiscountError] = useState("");
+  const [isCheckingDiscount, setIsCheckingDiscount] = useState(false);
+
+  // Harga setelah diskon rank otomatis
+  const rankDiscountedPrice = rank
+    ? Math.floor(
+        rank.originalPriceNum -
+          (rank.originalPriceNum * (rank.discount ?? 0)) / 100,
+      )
+    : 0;
+
+  // Harga final setelah kode diskon tambahan
+  const finalPrice = Math.max(0, rankDiscountedPrice - discountAmount);
 
   useEffect(() => {
     getRank();
@@ -82,6 +98,42 @@ export default function PaymentPage() {
       if (!rank || !selectedMethod) return;
       setLoadingPayment(true);
 
+      // Kartu kredit pakai Snap langsung
+      if (selectedMethod === "credit_card") {
+        const res = await fetch("/api/payment/create-snap", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            uuid,
+            username,
+            productName: rank.name,
+            slug: rank.slug,
+            price: finalPrice,
+          }),
+        });
+        const snapData = await res.json();
+        if (!snapData.success) {
+          alert("Gagal membuat pembayaran");
+          return;
+        }
+        window.snap.pay(snapData.token, {
+          onSuccess: () => {
+            window.location.href = "/payment/success";
+          },
+          onPending: () => {
+            alert("Menunggu pembayaran");
+          },
+          onError: () => {
+            alert("Pembayaran gagal");
+          },
+          onClose: () => {
+            console.log("Popup ditutup");
+          },
+        });
+        return;
+      }
+
+      // Metode lain pakai Core API
       const res = await fetch("/api/payment/create", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -90,7 +142,7 @@ export default function PaymentPage() {
           username,
           productName: rank.name,
           slug: rank.slug,
-          price: rank.originalPriceNum,
+          price: finalPrice,
           paymentMethod: selectedMethod,
         }),
       });
@@ -104,7 +156,6 @@ export default function PaymentPage() {
 
       const tx = data.data;
 
-      // Redirect sesuai metode pembayaran
       if (selectedMethod === "gopay") {
         const deeplink = tx.actions?.find(
           (a: any) => a.name === "deeplink-redirect",
@@ -134,19 +185,16 @@ export default function PaymentPage() {
         selectedMethod === "alfamart"
       ) {
         window.location.href = `/payment/instruction?orderId=${data.orderId}&method=${selectedMethod}&paymentCode=${tx.payment_code}`;
-      } else if (selectedMethod === "akulaku") {
-        const redirect = tx.actions?.find(
-          (a: any) => a.name === "redirect-url",
-        )?.url;
-        if (redirect) window.location.href = redirect;
-      } else if (selectedMethod === "kredivo") {
+      } else if (selectedMethod === "akulaku" || selectedMethod === "kredivo") {
         const redirect = tx.actions?.find(
           (a: any) => a.name === "redirect-url",
         )?.url;
         if (redirect) window.location.href = redirect;
       } else {
-        // Transfer bank — redirect ke halaman instruksi
-        window.location.href = `/payment/instruction?orderId=${data.orderId}&method=${selectedMethod}&vaNumber=${tx.va_numbers?.[0]?.va_number || tx.bill_key || ""}`;
+        // Transfer bank
+        const vaNumber =
+          tx.va_numbers?.[0]?.va_number || tx.permata_va_number || "";
+        window.location.href = `/payment/instruction?orderId=${data.orderId}&method=${selectedMethod}&vaNumber=${vaNumber}`;
       }
     } catch (err) {
       console.error(err);
@@ -192,13 +240,81 @@ export default function PaymentPage() {
     );
   }
 
+  const checkDiscount = async () => {
+    if (!discountCode.trim() || !rank) return;
+    try {
+      setIsCheckingDiscount(true);
+      setDiscountError("");
+      const res = await fetch("/api/store/check-discount", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          code: discountCode,
+          price: rank.originalPriceNum, // ← tambahkan ini
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setDiscountAmount(data.discountAmount);
+      } else {
+        setDiscountAmount(0);
+        setDiscountError(data.error || "Kode diskon tidak valid");
+      }
+    } catch (err) {
+      console.error(err);
+      setDiscountError("Gagal mengecek kode diskon");
+    } finally {
+      setIsCheckingDiscount(false);
+    }
+  };
+
+  const handleFreeRank = async () => {
+    try {
+      setLoadingPayment(true);
+      const res = await fetch("/api/payment/free-rank", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username, slug: rank?.slug }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        window.location.href = "/payment/success";
+      } else {
+        alert("Gagal memberikan rank");
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Terjadi kesalahan");
+    } finally {
+      setLoadingPayment(false);
+    }
+  };
+
   return (
     <div className="max-w-xl mx-auto p-5 space-y-5">
       <h1 className="text-2xl font-bold">Payment {rank?.name}</h1>
 
       <div className="border rounded-lg p-5 space-y-3">
         <p>Rank: {rank?.name}</p>
-        <p>Harga: Rp {rank?.originalPriceNum?.toLocaleString("id-ID")}</p>
+        <p className="line-through text-gray-400">
+          Harga: Rp {rank?.originalPriceNum?.toLocaleString("id-ID")}
+        </p>
+        {(rank?.discount ?? 0) > 0 && (
+          <p className="text-green-500">
+            Diskon {rank?.discount}%: -Rp{" "}
+            {(
+              (rank?.originalPriceNum ?? 0) - rankDiscountedPrice
+            ).toLocaleString("id-ID")}
+          </p>
+        )}
+        {discountAmount > 0 && (
+          <p className="text-green-500">
+            Kode Diskon: -Rp {discountAmount.toLocaleString("id-ID")}
+          </p>
+        )}
+        <p className="font-bold text-lg">
+          Total: Rp {finalPrice.toLocaleString("id-ID")}
+        </p>
       </div>
 
       {/* Input UUID */}
@@ -224,6 +340,34 @@ export default function PaymentPage() {
         )}
         {!isChecking && uuid && !isUserFound && (
           <p className="text-sm text-red-500">UUID tidak ditemukan</p>
+        )}
+      </div>
+
+      {/* Kode Diskon */}
+      <div className="space-y-2">
+        <Label>Kode Diskon (opsional)</Label>
+        <div className="flex gap-2">
+          <Input
+            placeholder="Masukkan kode diskon"
+            value={discountCode}
+            onChange={(e) => setDiscountCode(e.target.value.toUpperCase())}
+          />
+          <Button
+            type="button"
+            onClick={checkDiscount}
+            disabled={isCheckingDiscount}
+            className="shrink-0"
+          >
+            {isCheckingDiscount ? "..." : "Pakai"}
+          </Button>
+        </div>
+        {discountAmount > 0 && (
+          <p className="text-sm text-green-500">
+            ✅ Kode diskon berhasil dipakai!
+          </p>
+        )}
+        {discountError && (
+          <p className="text-sm text-red-500">{discountError}</p>
         )}
       </div>
 
@@ -267,11 +411,19 @@ export default function PaymentPage() {
 
       {/* Tombol Bayar */}
       <Button
-        onClick={handlePayment}
-        disabled={!isUserFound || !selectedMethod || loadingPayment}
+        onClick={finalPrice === 0 ? handleFreeRank : handlePayment}
+        disabled={
+          !isUserFound ||
+          (!selectedMethod && finalPrice !== 0) ||
+          loadingPayment
+        }
         className="w-full"
       >
-        {loadingPayment ? "Memproses..." : "Bayar Sekarang"}
+        {loadingPayment
+          ? "Memproses..."
+          : finalPrice === 0
+            ? "Klaim Gratis"
+            : "Bayar Sekarang"}
       </Button>
     </div>
   );
