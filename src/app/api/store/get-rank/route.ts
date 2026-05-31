@@ -13,7 +13,7 @@ export async function POST(req: Request) {
         },
         {
           status: 400,
-        }
+        },
       );
     }
 
@@ -24,6 +24,9 @@ export async function POST(req: Request) {
       .eq("content_key", "ranks")
       .single();
 
+    console.log("SUPABASE DATA:", data);
+    console.log("SUPABASE ERROR:", error);
+
     if (error || !data) {
       return NextResponse.json(
         {
@@ -32,7 +35,7 @@ export async function POST(req: Request) {
         },
         {
           status: 404,
-        }
+        },
       );
     }
 
@@ -43,9 +46,7 @@ export async function POST(req: Request) {
         : data.content_value;
 
     // cari rank berdasarkan slug
-    const rank = ranks.find(
-      (item: any) => item.slug === slug
-    );
+    const rank = ranks.find((item: any) => item.slug === slug);
 
     if (!rank) {
       return NextResponse.json(
@@ -55,7 +56,7 @@ export async function POST(req: Request) {
         },
         {
           status: 404,
-        }
+        },
       );
     }
 
@@ -73,7 +74,7 @@ export async function POST(req: Request) {
       },
       {
         status: 500,
-      }
+      },
     );
   }
 }

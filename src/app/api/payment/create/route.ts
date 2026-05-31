@@ -2,9 +2,9 @@ import { NextResponse } from "next/server";
 import midtransClient from "midtrans-client";
 
 const coreApi = new midtransClient.CoreApi({
-  isProduction: false,
+  isProduction: process.env.NEXT_PUBLIC_MIDTRANS_IS_PRODUCTION === "true",
   serverKey: process.env.MIDTRANS_SERVER_KEY!,
-  clientKey: process.env.MIDTRANS_CLIENT_KEY!,
+  clientKey: process.env.NEXT_PUBLIC_MIDTRANS_CLIENT_KEY!,
 });
 
 export async function POST(req: Request) {
@@ -20,55 +20,34 @@ export async function POST(req: Request) {
     }
 
     const orderId = `MC-${Date.now()}`;
+    const grossAmount = Number(price);
 
-    let parameter: any = {
-      transaction_details: {
-        order_id: orderId,
-        gross_amount: Number(price),
-      },
-      customer_details: {
-        first_name: username,
-      },
-      item_details: [
-        {
-          id: slug,
-          price: Number(price),
-          quantity: 1,
-          name: productName,
-        },
-      ],
+    const base: any = {
+      transaction_details: { order_id: orderId, gross_amount: grossAmount },
+      customer_details: { first_name: username },
+      item_details: [{ id: slug ?? orderId, price: grossAmount, quantity: 1, name: productName }],
       custom_field1: uuid,
       custom_field2: username,
-      custom_field3: slug,
+      custom_field3: slug ?? "",
     };
 
-    // Sesuaikan parameter berdasarkan metode pembayaran
+    let parameter: any = { ...base };
+
     if (paymentMethod === "gopay") {
       parameter.payment_type = "gopay";
-      parameter.gopay = {
-        enable_callback: true,
-        callback_url: `${process.env.NEXT_PUBLIC_BASE_URL}/payment/success`,
-      };
+      parameter.gopay = { enable_callback: true, callback_url: `${process.env.NEXT_PUBLIC_BASE_URL}/payment/success` };
     } else if (paymentMethod === "qris") {
       parameter.payment_type = "qris";
       parameter.qris = { acquirer: "gopay" };
-    } else if (paymentMethod === "ovo") {
-      parameter.payment_type = "e-money";
-      parameter.e_money = {
-        payment_provider: "ovo",
-        callback_url: `${process.env.NEXT_PUBLIC_BASE_URL}/payment/success`,
-      };
-    } else if (paymentMethod === "dana") {
-      parameter.payment_type = "e-money";
-      parameter.e_money = {
-        payment_provider: "dana",
-        callback_url: `${process.env.NEXT_PUBLIC_BASE_URL}/payment/success`,
-      };
     } else if (paymentMethod === "shopeepay") {
       parameter.payment_type = "shopeepay";
-      parameter.shopeepay = {
-        callback_url: `${process.env.NEXT_PUBLIC_BASE_URL}/payment/success`,
-      };
+      parameter.shopeepay = { callback_url: `${process.env.NEXT_PUBLIC_BASE_URL}/payment/success` };
+    } else if (paymentMethod === "ovo") {
+      parameter.payment_type = "e-money";
+      parameter.e_money = { payment_provider: "ovo", callback_url: `${process.env.NEXT_PUBLIC_BASE_URL}/payment/success` };
+    } else if (paymentMethod === "dana") {
+      parameter.payment_type = "e-money";
+      parameter.e_money = { payment_provider: "dana", callback_url: `${process.env.NEXT_PUBLIC_BASE_URL}/payment/success` };
     } else if (paymentMethod === "bca") {
       parameter.payment_type = "bank_transfer";
       parameter.bank_transfer = { bank: "bca" };
@@ -87,9 +66,6 @@ export async function POST(req: Request) {
     } else if (paymentMethod === "cimb") {
       parameter.payment_type = "bank_transfer";
       parameter.bank_transfer = { bank: "cimb" };
-    } else if (paymentMethod === "danamon") {
-      parameter.payment_type = "bank_transfer";
-      parameter.bank_transfer = { bank: "danamon" };
     } else if (paymentMethod === "indomaret") {
       parameter.payment_type = "cstore";
       parameter.cstore = { store: "indomaret" };
@@ -100,6 +76,8 @@ export async function POST(req: Request) {
       parameter.payment_type = "akulaku";
     } else if (paymentMethod === "kredivo") {
       parameter.payment_type = "kredivo";
+    } else {
+      return NextResponse.json({ error: "Metode pembayaran tidak valid" }, { status: 400 });
     }
 
     const transaction = await coreApi.charge(parameter);
@@ -111,7 +89,7 @@ export async function POST(req: Request) {
       paymentMethod,
     });
   } catch (error: any) {
-    console.error("MIDTRANS ERROR:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    console.error("[MIDTRANS] Core API error:", error);
+    return NextResponse.json({ error: error.message ?? "Internal server error" }, { status: 500 });
   }
 }

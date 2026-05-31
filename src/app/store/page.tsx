@@ -348,7 +348,7 @@ export default function StorePage() {
                         </div>
                       )}
                       <Card
-                        className={`glass border-0 h-full hover:scale-[1.02] transition-all duration-300 ${
+                        className={`glass border-0 h-full flex flex-col hover:scale-[1.02] transition-all duration-300 ${
                           rankExt.ultimate ? "glow-cyan" : rank.top ? "glow-gold" : rank.popular ? "glow-purple" : ""
                         }`}
                       >
@@ -367,7 +367,7 @@ export default function StorePage() {
                             </span>
                           </div>
                         </CardHeader>
-                        <CardContent className="space-y-3">
+                        <CardContent className="flex flex-col flex-1 space-y-3">
                           <div>
                             <p className="text-xs text-gray-400 mb-1">FITUR:</p>
                             <div className="flex flex-wrap gap-0.5">
@@ -396,13 +396,15 @@ export default function StorePage() {
                               💰 <span className="text-emerald-400">{rank.bonus?.money}</span>
                             </p>
                           </div>
-                          <Button
-                            onClick={() => openRankPurchaseDialog(rank)}
-                            className={`w-full bg-gradient-to-r ${rank.gradient ?? "from-green-500 to-emerald-500"} hover:opacity-90 text-white text-sm h-8`}
-                          >
-                            <ShoppingCart className="w-3 h-3 mr-1" />
-                            Beli Sekarang
-                          </Button>
+                          <div className="mt-auto pt-2">
+                            <Button
+                              onClick={() => openRankPurchaseDialog(rank)}
+                              className={`w-full bg-gradient-to-r ${rank.gradient ?? "from-green-500 to-emerald-500"} hover:opacity-90 text-white text-sm h-9`}
+                            >
+                              <ShoppingCart className="w-3 h-3 mr-1" />
+                              Beli Sekarang
+                            </Button>
+                          </div>
                         </CardContent>
                       </Card>
                     </motion.div>
