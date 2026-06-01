@@ -1952,9 +1952,9 @@ function RanksSection({ admin }: { admin: AdminUser }) {
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className={`font-bold text-sm ${rank.color}`}>{rank.name}</span>
                       {rank.discount > 0 && <span className="text-xs px-1.5 py-0.5 rounded bg-red-500/20 text-red-400">-{rank.discount}%</span>}
-                      {(rank as Record<string,unknown>).popular && <span className="text-xs px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-400">Popular</span>}
-                      {(rank as Record<string,unknown>).top && <span className="text-xs px-1.5 py-0.5 rounded bg-yellow-500/20 text-yellow-400">Top</span>}
-                      {(rank as Record<string,unknown>).ultimate && <span className="text-xs px-1.5 py-0.5 rounded bg-cyan-500/20 text-cyan-400">Ultimate</span>}
+                      {!!(rank as Record<string,unknown>).popular && <span className="text-xs px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-400">Popular</span>}
+                      {!!(rank as Record<string,unknown>).top && <span className="text-xs px-1.5 py-0.5 rounded bg-yellow-500/20 text-yellow-400">Top</span>}
+                      {!!(rank as Record<string,unknown>).ultimate && <span className="text-xs px-1.5 py-0.5 rounded bg-cyan-500/20 text-cyan-400">Ultimate</span>}
                     </div>
                     <p className="text-gray-400 text-xs mt-0.5">
                       {rank.discount > 0

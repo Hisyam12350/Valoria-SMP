@@ -67,6 +67,11 @@ export const metadata: Metadata = {
   },
 };
 
+const isProduction = process.env.NEXT_PUBLIC_MIDTRANS_IS_PRODUCTION === "true";
+const midtransScriptUrl = isProduction
+  ? "https://app.midtrans.com/snap/snap.js"
+  : "https://app.sandbox.midtrans.com/snap/snap.js";
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -74,14 +79,16 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="id" suppressHydrationWarning>
-      <Script
-        src="https://app.sandbox.midtrans.com/snap/snap.js"
-        data-client-key={process.env.NEXT_PUBLIC_MIDTRANS_CLIENT_KEY}
-        strategy="afterInteractive"
-      />
       <body
         className={`${minecraftFont.variable} ${geistSans.variable} ${geistMono.variable} antialiased bg-background text-foreground`}
       >
+        {/* Midtrans Snap Script */}
+        <Script
+          src={midtransScriptUrl}
+          data-client-key={process.env.NEXT_PUBLIC_MIDTRANS_CLIENT_KEY}
+          strategy="afterInteractive"
+        />
+
         {/* Fixed Background */}
         <div
           className="fixed inset-0 bg-cover bg-center bg-no-repeat -z-10"
