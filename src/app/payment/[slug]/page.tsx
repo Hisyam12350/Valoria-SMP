@@ -33,7 +33,7 @@ type PaymentMethod = {
 
 const PAYMENT_METHODS: PaymentMethod[] = [
   { id: "gopay",     label: "GoPay",     icon: "/icons/payment/gopay.jpg",     category: "ewallet" },
-  { id: "qris",      label: "QRIS",      icon: "/icons/payment/qris.svg",      category: "ewallet" },
+  { id: "qris",      label: "QRIS",      icon: "/icons/payment/qris.jpg",      category: "ewallet" },
   { id: "shopeepay", label: "ShopeePay", icon: "/icons/payment/shopeepay.jpg", category: "ewallet" },
   { id: "dana",      label: "DANA",      icon: "/icons/payment/dana.jpg",      category: "ewallet" },
   { id: "ovo",       label: "OVO",       icon: "/icons/payment/ovo.jpg",       category: "ewallet" },

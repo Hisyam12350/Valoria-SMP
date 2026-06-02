@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Press_Start_2P, Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
-import { Navbar } from "@/components/navbar";
+import { Sidebar } from "@/components/sidebar";
 import { Footer } from "@/components/footer";
 import { MusicPlayer } from "@/components/music-player";
 import { BACKGROUND_IMAGE } from "@/lib/constants";
@@ -100,8 +100,8 @@ export default function RootLayout({
 
         {/* Content */}
         <div className="relative z-10 flex flex-col min-h-screen">
-          <Navbar />
-          <main className="flex-1">{children}</main>
+          <Sidebar />
+          <main className="flex-1 pl-0">{children}</main>
           <Footer />
           <MusicPlayer />
         </div>
