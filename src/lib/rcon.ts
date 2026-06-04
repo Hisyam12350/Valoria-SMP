@@ -2,7 +2,7 @@
 import { Rcon } from "rcon-client";
 
 const RCON_HOST = process.env.MINECRAFT_RCON_HOST ?? "localhost";
-const RCON_PORT = parseInt(process.env.MINECRAFT_RCON_PORT ?? "22556");
+const RCON_PORT = parseInt(process.env.MINECRAFT_RCON_PORT ?? "25575");
 const RCON_PASSWORD = process.env.MINECRAFT_RCON_PASSWORD!;
 
 /**
@@ -51,7 +51,36 @@ export async function giveRank(username: string, rank: string): Promise<string> 
 }
 
 /**
- * Parse jumlah points dari string format "2.500" → 2500
+ * Beri skill XP ke player via AureliumSkills
+ * Command: /skills xp add <username> <skill> <amount>
+ * 
+ * Skill yang tersedia di AureliumSkills:
+ * farming, foraging, mining, fishing, excavation,
+ * archery, defense, fighting, endurance, agility,
+ * alchemy, enchanting, sorcery, healing, forging
+ */
+export async function giveSkillXp(
+  username: string,
+  skill: string,
+  amount: number
+): Promise<string> {
+  return sendRconCommand(`skills xp add ${username} ${skill} ${amount}`);
+}
+
+/**
+ * Beri skill level ke player via AureliumSkills
+ * Command: /skills level add <username> <skill> <amount>
+ */
+export async function giveSkillLevel(
+  username: string,
+  skill: string,
+  amount: number
+): Promise<string> {
+  return sendRconCommand(`skills level add ${username} ${skill} ${amount}`);
+}
+
+/**
+ * Parse jumlah dari string format "2.500" → 2500
  */
 export function parseFormattedNumber(value: string): number {
   return parseInt(value.replace(/\./g, "").replace(/,/g, ""), 10);

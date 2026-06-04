@@ -2,7 +2,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import midtransClient from "midtrans-client";
 import { supabaseAdmin } from "@/lib/supabase";
-import { givePoints, giveMoney, giveRank, parseFormattedNumber } from "@/lib/rcon";
+import {
+  givePoints,
+  giveMoney,
+  giveRank,
+  giveSkillLevel,
+  parseFormattedNumber,
+} from "@/lib/rcon";
 
 const coreApi = new midtransClient.CoreApi({
   isProduction: process.env.MIDTRANS_IS_PRODUCTION === "true",
@@ -76,7 +82,7 @@ export async function POST(req: NextRequest) {
 
     // Hindari proses duplikat jika sudah success
     if (transaction.status === "success") {
-      console.log(`[NOTIFICATION] Order ${order_id} sudah diproses sebelumnya, skip.`);
+      console.log(`[NOTIFICATION] Order ${order_id} sudah diproses, skip.`);
       return NextResponse.json({ success: true });
     }
 
@@ -138,11 +144,10 @@ async function handleSuccessfulPayment({
   console.log(`[PAYMENT_SUCCESS] ${category} → ${username} | slug: ${slug}`);
 
   let rconResponse = "";
-  let success = false;
+  let rconSuccess = false;
 
   try {
     if (category === "points") {
-      // Ambil data points dari Supabase berdasarkan slug
       // slug format: "points-starter", "points-basic", dll
       const rankSlug = slug.replace("points-", "");
 
@@ -157,16 +162,15 @@ async function handleSuccessfulPayment({
         : JSON.parse(storeData?.content_value ?? "[]");
 
       const item = pointsStore.find((p: any) => p.slug === rankSlug);
-      if (!item) throw new Error(`Points item tidak ditemukan untuk slug: ${rankSlug}`);
+      if (!item) throw new Error(`Points item tidak ditemukan: ${rankSlug}`);
 
       const amount = parseFormattedNumber(item.points);
       rconResponse = await givePoints(username, amount);
-      success = true;
+      rconSuccess = true;
 
-      console.log(`[RCON] Give ${amount} points to ${username}: ${rconResponse}`);
+      console.log(`[RCON] ✅ Give ${amount} points to ${username}`);
 
     } else if (category === "money") {
-      // Ambil data money dari Supabase berdasarkan slug
       // slug format: "money-starter", "money-basic", dll
       const rankSlug = slug.replace("money-", "");
 
@@ -181,34 +185,36 @@ async function handleSuccessfulPayment({
         : JSON.parse(storeData?.content_value ?? "[]");
 
       const item = moneyStore.find((m: any) => m.slug === rankSlug);
-      if (!item) throw new Error(`Money item tidak ditemukan untuk slug: ${rankSlug}`);
+      if (!item) throw new Error(`Money item tidak ditemukan: ${rankSlug}`);
 
       // Parse "$100.000" → 100000
       const amount = parseFormattedNumber(item.money.replace("$", ""));
       rconResponse = await giveMoney(username, amount);
-      success = true;
+      rconSuccess = true;
 
-      console.log(`[RCON] Give ${amount} money to ${username}: ${rconResponse}`);
+      console.log(`[RCON] ✅ Give ${amount} money to ${username}`);
 
     } else if (category === "rank") {
+      // slug langsung nama rank, misal: "starter", "noble", dll
       rconResponse = await giveRank(username, slug);
-      success = true;
+      rconSuccess = true;
 
-      console.log(`[RCON] Give rank ${slug} to ${username}: ${rconResponse}`);
+      console.log(`[RCON] ✅ Give rank ${slug} to ${username}`);
 
     } else if (category === "skills") {
-      // slug format: "skill-mining", "skill-farming", dll
-      const skillName = slug.replace("skill-", "");
-      rconResponse = await supabaseAdmin
-        .from("site_content")
-        .select("content_value")
-        .then(() => ""); // placeholder — sesuaikan command skill Anda
+      // slug format: "skill-mining-5" → skill: mining, level: 5
+      // Contoh productName: "Skill Mining x5 Level"
+      const parts = slug.replace("skill-", "").split("-");
+      const skillName = parts[0]; // misal: "mining"
+      const levelAmount = parseInt(parts[1] ?? "1", 10); // misal: 5
 
-      console.log(`[RCON] Give skill ${skillName} to ${username}`);
-      success = true;
+      rconResponse = await giveSkillLevel(username, skillName, levelAmount);
+      rconSuccess = true;
+
+      console.log(`[RCON] ✅ Give ${levelAmount} level ${skillName} to ${username}`);
     }
 
-    // ── Catat di payment_logs ──────────────────────────────────────────────
+    // ── Catat di payment_logs ────────────────────────────────────────────────
     await supabaseAdmin.from("payment_logs").insert({
       order_id: orderId,
       uuid,
@@ -218,14 +224,14 @@ async function handleSuccessfulPayment({
       price,
       slug,
       rcon_response: rconResponse,
-      rcon_success: success,
+      rcon_success: rconSuccess,
       executed_at: new Date().toISOString(),
     });
 
   } catch (err: any) {
     console.error("[PAYMENT_SUCCESS] Handler error:", err.message);
 
-    // Catat kegagalan RCON ke payment_logs
+    // Catat kegagalan ke payment_logs
     await supabaseAdmin.from("payment_logs").insert({
       order_id: orderId,
       uuid,

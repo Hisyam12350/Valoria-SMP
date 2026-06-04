@@ -3,14 +3,23 @@
 import { useEffect, useState, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { Loader2, AlertCircle, CheckCircle2, ChevronDown, ChevronUp, Tag, X } from "lucide-react";
+import {
+  Loader2,
+  AlertCircle,
+  CheckCircle2,
+  ChevronDown,
+  ChevronUp,
+  Tag,
+  X,
+} from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { PageWrapper } from "@/components/page-wrapper";
 
-type Rank = {
+type ProductType = "rank" | "money" | "points" | "skill";
+
+type Product = {
   name: string;
   slug: string;
-  price: string;
   originalPriceNum: number;
   discount: number;
   color?: string;
@@ -22,6 +31,10 @@ type Rank = {
     sethome?: string;
     money?: string;
   };
+  moneyAmount?: string;
+  pointsAmount?: string;
+  skillName?: string;
+  skillLevel?: number;
 };
 
 type PaymentMethod = {
@@ -32,21 +45,81 @@ type PaymentMethod = {
 };
 
 const PAYMENT_METHODS: PaymentMethod[] = [
-  { id: "gopay",     label: "GoPay",     icon: "/icons/payment/gopay.jpg",     category: "ewallet" },
-  { id: "qris",      label: "QRIS",      icon: "/icons/payment/qris.jpg",      category: "ewallet" },
-  { id: "shopeepay", label: "ShopeePay", icon: "/icons/payment/shopeepay.jpg", category: "ewallet" },
-  { id: "dana",      label: "DANA",      icon: "/icons/payment/dana.jpg",      category: "ewallet" },
-  { id: "ovo",       label: "OVO",       icon: "/icons/payment/ovo.jpg",       category: "ewallet" },
-  { id: "bca",       label: "BCA",       icon: "/icons/payment/bca.jpg",       category: "bank" },
-  { id: "bni",       label: "BNI",       icon: "/icons/payment/bni.jpg",       category: "bank" },
-  { id: "bri",       label: "BRI",       icon: "/icons/payment/bri.jpg",       category: "bank" },
-  { id: "mandiri",   label: "Mandiri",   icon: "/icons/payment/mandiri.jpg",   category: "bank" },
-  { id: "permata",   label: "Permata",   icon: "/icons/payment/permata.jpg",   category: "bank" },
-  { id: "cimb",      label: "CIMB",      icon: "/icons/payment/cimb.jpg",      category: "bank" },
-  { id: "indomaret", label: "Indomaret", icon: "/icons/payment/indomaret.jpg", category: "store" },
-  { id: "alfamart",  label: "Alfamart",  icon: "/icons/payment/alfamart.jpg",  category: "store" },
-  { id: "akulaku",   label: "Akulaku",   icon: "/icons/payment/akulaku.jpg",   category: "paylater" },
-  { id: "kredivo",   label: "Kredivo",   icon: "/icons/payment/kredivo.jpg",   category: "paylater" },
+  {
+    id: "gopay",
+    label: "GoPay",
+    icon: "/icons/payment/gopay.jpg",
+    category: "ewallet",
+  },
+  {
+    id: "qris",
+    label: "QRIS",
+    icon: "/icons/payment/qris.jpg",
+    category: "ewallet",
+  },
+  {
+    id: "shopeepay",
+    label: "ShopeePay",
+    icon: "/icons/payment/shopeepay.jpg",
+    category: "ewallet",
+  },
+  {
+    id: "dana",
+    label: "DANA",
+    icon: "/icons/payment/dana.jpg",
+    category: "ewallet",
+  },
+  {
+    id: "ovo",
+    label: "OVO",
+    icon: "/icons/payment/ovo.jpg",
+    category: "ewallet",
+  },
+  { id: "bca", label: "BCA", icon: "/icons/payment/bca.jpg", category: "bank" },
+  { id: "bni", label: "BNI", icon: "/icons/payment/bni.jpg", category: "bank" },
+  { id: "bri", label: "BRI", icon: "/icons/payment/bri.jpg", category: "bank" },
+  {
+    id: "mandiri",
+    label: "Mandiri",
+    icon: "/icons/payment/mandiri.jpg",
+    category: "bank",
+  },
+  {
+    id: "permata",
+    label: "Permata",
+    icon: "/icons/payment/permata.jpg",
+    category: "bank",
+  },
+  {
+    id: "cimb",
+    label: "CIMB",
+    icon: "/icons/payment/cimb.jpg",
+    category: "bank",
+  },
+  {
+    id: "indomaret",
+    label: "Indomaret",
+    icon: "/icons/payment/indomaret.jpg",
+    category: "store",
+  },
+  {
+    id: "alfamart",
+    label: "Alfamart",
+    icon: "/icons/payment/alfamart.jpg",
+    category: "store",
+  },
+  {
+    id: "akulaku",
+    label: "Akulaku",
+    icon: "/icons/payment/akulaku.jpg",
+    category: "paylater",
+  },
+  {
+    id: "kredivo",
+    label: "Kredivo",
+    icon: "/icons/payment/kredivo.jpg",
+    category: "paylater",
+  },
 ];
 
 const CATEGORY_LABELS: Record<string, string> = {
@@ -56,11 +129,16 @@ const CATEGORY_LABELS: Record<string, string> = {
   paylater: "Paylater",
 };
 
+const SKILL_PRICE_PER_LEVEL = 5000;
+
 function formatRupiah(num: number): string {
   return `Rp ${num.toLocaleString("id-ID")}`;
 }
 
-function calculateDiscountedPrice(originalPrice: number, discount: number): number {
+function calculateDiscountedPrice(
+  originalPrice: number,
+  discount: number,
+): number {
   return Math.floor(originalPrice * (1 - discount / 100));
 }
 
@@ -69,7 +147,8 @@ export default function PaymentPage() {
   const router = useRouter();
   const slug = params.slug as string;
 
-  const [rank, setRank] = useState<Rank | null>(null);
+  const [product, setProduct] = useState<Product | null>(null);
+  const [productType, setProductType] = useState<ProductType>("rank");
   const [pageError, setPageError] = useState("");
 
   const [username, setUsername] = useState("");
@@ -81,61 +160,215 @@ export default function PaymentPage() {
   const [showAll, setShowAll] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
-  // Voucher state
   const [voucherCode, setVoucherCode] = useState("");
   const [isCheckingVoucher, setIsCheckingVoucher] = useState(false);
   const [voucherApplied, setVoucherApplied] = useState(false);
   const [voucherMessage, setVoucherMessage] = useState("");
   const [discountAmount, setDiscountAmount] = useState(0);
-  const [voucherFinalPrice, setVoucherFinalPrice] = useState<number | null>(null);
+  const [voucherFinalPrice, setVoucherFinalPrice] = useState<number | null>(
+    null,
+  );
 
   const leftRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => { fetchRank(); }, [slug]);
+  useEffect(() => {
+    fetchProduct();
+  }, [slug]);
 
-  const fetchRank = async () => {
+  const fetchProduct = async () => {
     try {
-      const res = await fetch("/api/store/get-rank", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ slug }),
-      });
-      const data = await res.json();
-      if (!data.success) { setPageError("Rank tidak ditemukan"); return; }
-      setRank(data.rank);
-    } catch { setPageError("Gagal mengambil data rank"); }
+      if (slug.startsWith("money-")) {
+        setProductType("money");
+        const moneySlug = slug.replace("money-", "");
+        const res = await fetch("/api/store/get-money");
+        const data = await res.json();
+        if (!data.success) {
+          setPageError("Paket money tidak ditemukan");
+          return;
+        }
+        const item = data.money.find((m: any) => m.slug === moneySlug);
+        if (!item) {
+          setPageError("Paket money tidak ditemukan");
+          return;
+        }
+        setProduct({
+          name: `${item.money} In-Game Money`,
+          slug: slug,
+          originalPriceNum: item.harga,
+          discount: 0,
+          color: item.color,
+          gradient: item.gradient,
+          moneyAmount: item.money,
+        });
+      } else if (slug.startsWith("points-")) {
+        setProductType("points");
+        const pointsSlug = slug.replace("points-", "");
+        const res = await fetch("/api/store/get-points");
+        const data = await res.json();
+        if (!data.success) {
+          setPageError("Paket points tidak ditemukan");
+          return;
+        }
+        const item = data.points.find((p: any) => p.slug === pointsSlug);
+        if (!item) {
+          setPageError("Paket points tidak ditemukan");
+          return;
+        }
+        setProduct({
+          name: `${item.points} Points`,
+          slug: slug,
+          originalPriceNum: item.harga,
+          discount: 0,
+          color: item.color,
+          gradient: item.gradient,
+          pointsAmount: item.points,
+        });
+      } else if (slug.startsWith("skill-")) {
+        setProductType("skill");
+        const skillName = slug.replace("skill-", "").replace(/-/g, " ");
+        const searchParams = new URLSearchParams(window.location.search);
+        const level = parseInt(searchParams.get("level") || "1");
+        setProduct({
+          name: `Skill ${skillName} x${level} Level`,
+          slug: slug,
+          originalPriceNum: level * SKILL_PRICE_PER_LEVEL,
+          discount: 0,
+          gradient: "from-purple-500 to-violet-600",
+          skillName: skillName,
+          skillLevel: level,
+        });
+      } else {
+        setProductType("rank");
+        const res = await fetch("/api/store/get-rank", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ slug }),
+        });
+        const data = await res.json();
+        if (!data.success) {
+          setPageError("Rank tidak ditemukan");
+          return;
+        }
+        setProduct(data.rank);
+      }
+    } catch {
+      setPageError("Gagal mengambil data produk");
+    }
   };
 
-  // Extract gradient colors from rank.gradient string like "from-purple-500 to-violet-600"
   const getGradientStyle = (gradient?: string) => {
-    if (!gradient) return { card: 'rgba(15,20,35,0.92)', border: 'rgba(255,255,255,0.12)', header: 'rgba(255,255,255,0.06)' };
-    const colorMap: Record<string, { card: string; border: string; header: string }> = {
-      'gray':    { card: 'rgba(20,20,25,0.95)',   border: 'rgba(150,150,170,0.4)', header: 'rgba(100,100,120,0.2)' },
-      'blue':    { card: 'rgba(10,20,45,0.95)',   border: 'rgba(59,130,246,0.5)',  header: 'rgba(59,130,246,0.15)' },
-      'indigo':  { card: 'rgba(15,15,50,0.95)',   border: 'rgba(99,102,241,0.5)',  header: 'rgba(99,102,241,0.15)' },
-      'violet':  { card: 'rgba(20,10,45,0.95)',   border: 'rgba(139,92,246,0.5)',  header: 'rgba(139,92,246,0.15)' },
-      'purple':  { card: 'rgba(25,10,45,0.95)',   border: 'rgba(168,85,247,0.5)',  header: 'rgba(168,85,247,0.15)' },
-      'fuchsia': { card: 'rgba(35,10,40,0.95)',   border: 'rgba(217,70,239,0.5)',  header: 'rgba(217,70,239,0.15)' },
-      'pink':    { card: 'rgba(40,10,30,0.95)',   border: 'rgba(236,72,153,0.5)',  header: 'rgba(236,72,153,0.15)' },
-      'rose':    { card: 'rgba(40,10,20,0.95)',   border: 'rgba(244,63,94,0.5)',   header: 'rgba(244,63,94,0.15)' },
-      'red':     { card: 'rgba(40,10,10,0.95)',   border: 'rgba(239,68,68,0.5)',   header: 'rgba(239,68,68,0.15)' },
-      'orange':  { card: 'rgba(40,20,10,0.95)',   border: 'rgba(249,115,22,0.5)',  header: 'rgba(249,115,22,0.15)' },
-      'amber':   { card: 'rgba(40,25,5,0.95)',    border: 'rgba(245,158,11,0.5)',  header: 'rgba(245,158,11,0.15)' },
-      'yellow':  { card: 'rgba(35,30,5,0.95)',    border: 'rgba(234,179,8,0.5)',   header: 'rgba(234,179,8,0.15)' },
-      'lime':    { card: 'rgba(15,35,5,0.95)',    border: 'rgba(132,204,22,0.5)',  header: 'rgba(132,204,22,0.15)' },
-      'green':   { card: 'rgba(10,35,15,0.95)',   border: 'rgba(34,197,94,0.5)',   header: 'rgba(34,197,94,0.15)' },
-      'emerald': { card: 'rgba(5,35,25,0.95)',    border: 'rgba(16,185,129,0.5)',  header: 'rgba(16,185,129,0.15)' },
-      'teal':    { card: 'rgba(5,30,30,0.95)',    border: 'rgba(20,184,166,0.5)',  header: 'rgba(20,184,166,0.15)' },
-      'cyan':    { card: 'rgba(5,25,35,0.95)',    border: 'rgba(6,182,212,0.5)',   header: 'rgba(6,182,212,0.15)' },
+    if (!gradient)
+      return {
+        card: "rgba(15,20,35,0.92)",
+        border: "rgba(255,255,255,0.12)",
+        header: "rgba(255,255,255,0.06)",
+      };
+    const colorMap: Record<
+      string,
+      { card: string; border: string; header: string }
+    > = {
+      gray: {
+        card: "rgba(20,20,25,0.95)",
+        border: "rgba(150,150,170,0.4)",
+        header: "rgba(100,100,120,0.2)",
+      },
+      blue: {
+        card: "rgba(10,20,45,0.95)",
+        border: "rgba(59,130,246,0.5)",
+        header: "rgba(59,130,246,0.15)",
+      },
+      indigo: {
+        card: "rgba(15,15,50,0.95)",
+        border: "rgba(99,102,241,0.5)",
+        header: "rgba(99,102,241,0.15)",
+      },
+      violet: {
+        card: "rgba(20,10,45,0.95)",
+        border: "rgba(139,92,246,0.5)",
+        header: "rgba(139,92,246,0.15)",
+      },
+      purple: {
+        card: "rgba(25,10,45,0.95)",
+        border: "rgba(168,85,247,0.5)",
+        header: "rgba(168,85,247,0.15)",
+      },
+      fuchsia: {
+        card: "rgba(35,10,40,0.95)",
+        border: "rgba(217,70,239,0.5)",
+        header: "rgba(217,70,239,0.15)",
+      },
+      pink: {
+        card: "rgba(40,10,30,0.95)",
+        border: "rgba(236,72,153,0.5)",
+        header: "rgba(236,72,153,0.15)",
+      },
+      rose: {
+        card: "rgba(40,10,20,0.95)",
+        border: "rgba(244,63,94,0.5)",
+        header: "rgba(244,63,94,0.15)",
+      },
+      red: {
+        card: "rgba(40,10,10,0.95)",
+        border: "rgba(239,68,68,0.5)",
+        header: "rgba(239,68,68,0.15)",
+      },
+      orange: {
+        card: "rgba(40,20,10,0.95)",
+        border: "rgba(249,115,22,0.5)",
+        header: "rgba(249,115,22,0.15)",
+      },
+      amber: {
+        card: "rgba(40,25,5,0.95)",
+        border: "rgba(245,158,11,0.5)",
+        header: "rgba(245,158,11,0.15)",
+      },
+      yellow: {
+        card: "rgba(35,30,5,0.95)",
+        border: "rgba(234,179,8,0.5)",
+        header: "rgba(234,179,8,0.15)",
+      },
+      lime: {
+        card: "rgba(15,35,5,0.95)",
+        border: "rgba(132,204,22,0.5)",
+        header: "rgba(132,204,22,0.15)",
+      },
+      green: {
+        card: "rgba(10,35,15,0.95)",
+        border: "rgba(34,197,94,0.5)",
+        header: "rgba(34,197,94,0.15)",
+      },
+      emerald: {
+        card: "rgba(5,35,25,0.95)",
+        border: "rgba(16,185,129,0.5)",
+        header: "rgba(16,185,129,0.15)",
+      },
+      teal: {
+        card: "rgba(5,30,30,0.95)",
+        border: "rgba(20,184,166,0.5)",
+        header: "rgba(20,184,166,0.15)",
+      },
+      cyan: {
+        card: "rgba(5,25,35,0.95)",
+        border: "rgba(6,182,212,0.5)",
+        header: "rgba(6,182,212,0.15)",
+      },
     };
     for (const [key, val] of Object.entries(colorMap)) {
       if (gradient.includes(key)) return val;
     }
-    return { card: 'rgba(15,20,35,0.92)', border: 'rgba(255,255,255,0.12)', header: 'rgba(255,255,255,0.06)' };
+    return {
+      card: "rgba(15,20,35,0.92)",
+      border: "rgba(255,255,255,0.12)",
+      header: "rgba(255,255,255,0.06)",
+    };
   };
 
   const checkPlayer = async (value: string) => {
-    if (!value.trim()) { setUuid(""); setIsPlayerFound(false); return; }
+    if (!value.trim()) {
+      setUuid("");
+      setIsPlayerFound(false);
+      return;
+    }
     try {
       setIsCheckingPlayer(true);
       const res = await fetch("/api/minecraft/check-user", {
@@ -144,28 +377,36 @@ export default function PaymentPage() {
         body: JSON.stringify({ username: value }),
       });
       const data = await res.json();
-      if (data.found) { setUuid(data.user.uuid); setIsPlayerFound(true); }
-      else { setUuid(""); setIsPlayerFound(false); }
-    } catch { setIsPlayerFound(false); }
-    finally { setIsCheckingPlayer(false); }
+      if (data.found) {
+        setUuid(data.user.uuid);
+        setIsPlayerFound(true);
+      } else {
+        setUuid("");
+        setIsPlayerFound(false);
+      }
+    } catch {
+      setIsPlayerFound(false);
+    } finally {
+      setIsCheckingPlayer(false);
+    }
   };
 
   const checkVoucher = async () => {
-    if (!voucherCode.trim() || !rank) return;
+    if (!voucherCode.trim() || !product) return;
     try {
       setIsCheckingVoucher(true);
       setVoucherApplied(false);
       setVoucherMessage("");
-
-      const basePrice = calculateDiscountedPrice(rank.originalPriceNum, rank.discount ?? 0);
-
+      const basePrice = calculateDiscountedPrice(
+        product.originalPriceNum,
+        product.discount ?? 0,
+      );
       const res = await fetch("/api/voucher/check", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ code: voucherCode, price: basePrice }),
       });
       const data = await res.json();
-
       if (data.valid) {
         setVoucherApplied(true);
         setVoucherMessage(data.message);
@@ -193,11 +434,28 @@ export default function PaymentPage() {
     setVoucherFinalPrice(null);
   };
 
+  const getProductIcon = () => {
+    if (productType === "money") return "💰";
+    if (productType === "points") return "⭐";
+    if (productType === "skill") return "⚡";
+    return "👑";
+  };
+
+  const getProductTitle = () => {
+    if (productType === "money") return "MONEY CHECKOUT";
+    if (productType === "points") return "POINTS CHECKOUT";
+    if (productType === "skill") return "SKILL CHECKOUT";
+    return "RANK CHECKOUT";
+  };
+
   const handlePayment = async () => {
-    if (!rank || !isPlayerFound || !selectedMethod) return;
+    if (!product || !isPlayerFound || !selectedMethod) return;
     try {
       setIsLoading(true);
-      const basePrice = calculateDiscountedPrice(rank.originalPriceNum, rank.discount ?? 0);
+      const basePrice = calculateDiscountedPrice(
+        product.originalPriceNum,
+        product.discount ?? 0,
+      );
       const finalPrice = voucherFinalPrice ?? basePrice;
 
       const res = await fetch("/api/payment/create", {
@@ -206,8 +464,8 @@ export default function PaymentPage() {
         body: JSON.stringify({
           uuid,
           username,
-          productName: `Rank ${rank.name}`,
-          slug: rank.slug,
+          productName: product.name,
+          slug: product.slug,
           price: finalPrice,
           paymentMethod: selectedMethod,
           voucherCode: voucherApplied ? voucherCode : undefined,
@@ -216,44 +474,77 @@ export default function PaymentPage() {
 
       const data = await res.json();
       if (!data.success) {
-        toast({ title: "Gagal", description: data.error ?? "Gagal membuat transaksi", variant: "destructive" });
+        toast({
+          title: "Gagal",
+          description: data.error ?? "Gagal membuat transaksi",
+          variant: "destructive",
+        });
         return;
       }
 
       const tx = data.data;
 
       if (["gopay", "shopeepay", "ovo", "dana"].includes(selectedMethod)) {
-        const deeplink = tx.actions?.find((a: any) => a.name === "deeplink-redirect")?.url;
-        const qr = tx.actions?.find((a: any) => a.name === "generate-qr-code")?.url;
+        const deeplink = tx.actions?.find(
+          (a: any) => a.name === "deeplink-redirect",
+        )?.url;
+        const qr = tx.actions?.find(
+          (a: any) => a.name === "generate-qr-code",
+        )?.url;
         if (deeplink) window.location.href = deeplink;
         else if (qr) window.location.href = qr;
-        else toast({ title: "Info", description: "Cek app e-wallet kamu untuk menyelesaikan pembayaran." });
+        else
+          toast({
+            title: "Info",
+            description:
+              "Cek app e-wallet kamu untuk menyelesaikan pembayaran.",
+          });
       } else if (selectedMethod === "qris") {
-        const qr = tx.actions?.find((a: any) => a.name === "generate-qr-code")?.url;
-        if (qr) router.push(`/payment/instruction?orderId=${data.orderId}&method=qris&qrUrl=${encodeURIComponent(qr)}`);
+        const qrString = tx.qr_string;
+        const orderId = data.orderId;
+        if (qrString) {
+          router.push(
+            `/payment/instruction?orderId=${orderId}&method=qris&qrString=${encodeURIComponent(qrString)}`,
+          );
+        }
       } else if (["indomaret", "alfamart"].includes(selectedMethod)) {
-        router.push(`/payment/instruction?orderId=${data.orderId}&method=${selectedMethod}&paymentCode=${tx.payment_code}`);
+        router.push(
+          `/payment/instruction?orderId=${data.orderId}&method=${selectedMethod}&paymentCode=${tx.payment_code}`,
+        );
       } else if (["akulaku", "kredivo"].includes(selectedMethod)) {
-        const redirect = tx.actions?.find((a: any) => a.name === "redirect-url")?.url;
+        const redirect = tx.actions?.find(
+          (a: any) => a.name === "redirect-url",
+        )?.url;
         if (redirect) window.location.href = redirect;
       } else {
         const vaNumber = tx.va_numbers?.[0]?.va_number || tx.bill_key || "";
-        router.push(`/payment/instruction?orderId=${data.orderId}&method=${selectedMethod}&vaNumber=${vaNumber}&amount=${finalPrice}`);
+        router.push(
+          `/payment/instruction?orderId=${data.orderId}&method=${selectedMethod}&vaNumber=${vaNumber}&amount=${finalPrice}`,
+        );
       }
     } catch (err: any) {
-      toast({ title: "Error", description: err.message, variant: "destructive" });
+      toast({
+        title: "Error",
+        description: err.message,
+        variant: "destructive",
+      });
     } finally {
       setIsLoading(false);
     }
   };
 
-  const grouped = PAYMENT_METHODS.reduce((acc, m) => {
-    if (!acc[m.category]) acc[m.category] = [];
-    acc[m.category].push(m);
-    return acc;
-  }, {} as Record<string, PaymentMethod[]>);
+  const grouped = PAYMENT_METHODS.reduce(
+    (acc, m) => {
+      if (!acc[m.category]) acc[m.category] = [];
+      acc[m.category].push(m);
+      return acc;
+    },
+    {} as Record<string, PaymentMethod[]>,
+  );
 
-  const visibleCategories = showAll ? Object.keys(grouped) : ["ewallet", "bank"];
+  const visibleCategories = showAll
+    ? Object.keys(grouped)
+    : ["ewallet", "bank"];
 
   if (pageError) {
     return (
@@ -262,46 +553,60 @@ export default function PaymentPage() {
           <div className="text-center space-y-4">
             <AlertCircle className="w-16 h-16 text-red-400 mx-auto" />
             <h1 className="text-xl font-bold text-white">{pageError}</h1>
-            <button onClick={() => router.push("/store")} className="rpg-back-btn" style={{width:'auto',padding:'10px 24px'}}>← Kembali ke Store</button>
+            <button
+              onClick={() => router.back()}
+              className="rpg-back-btn"
+              style={{ width: "auto", padding: "10px 24px" }}
+            >
+              ← Kembali ke Store
+            </button>
           </div>
         </div>
       </PageWrapper>
     );
   }
 
-  if (!rank) {
+  if (!product) {
     return (
       <PageWrapper>
         <div className="min-h-screen flex items-center justify-center">
           <div className="text-center">
             <Loader2 className="w-10 h-10 animate-spin text-amber-400 mx-auto mb-3" />
-            <p className="text-amber-700 text-sm">Memuat data rank...</p>
+            <p className="text-amber-700 text-sm">Memuat data produk...</p>
           </div>
         </div>
       </PageWrapper>
     );
   }
 
-  const basePrice = calculateDiscountedPrice(rank.originalPriceNum, rank.discount ?? 0);
+  const basePrice = calculateDiscountedPrice(
+    product.originalPriceNum,
+    product.discount ?? 0,
+  );
   const finalPrice = voucherFinalPrice ?? basePrice;
   const canPay = isPlayerFound && !!selectedMethod && !isLoading;
 
   return (
     <PageWrapper>
       <div className="rpg-page">
-
-        <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }} className="rpg-title-wrap">
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4 }}
+          className="rpg-title-wrap"
+        >
           <div className="rpg-title-box">
             <span>⚔</span>
-            <h1 className="rpg-title">RANK CHECKOUT</h1>
+            <h1 className="rpg-title">{getProductTitle()}</h1>
             <span>⚔</span>
           </div>
-          <p className="rpg-subtitle">Pilih metode pembayaran & dapatkan rankmu</p>
+          <p className="rpg-subtitle">
+            Pilih metode pembayaran & dapatkan itemmu
+          </p>
         </motion.div>
 
         <div className="rpg-grid">
-
-          {/* LEFT — Sticky Rank Info */}
+          {/* LEFT — Product Info */}
           <motion.div
             ref={leftRef}
             initial={{ opacity: 0, x: -24 }}
@@ -309,45 +614,175 @@ export default function PaymentPage() {
             transition={{ duration: 0.45, delay: 0.1 }}
             className="rpg-left-col"
           >
-            <div className="rpg-card" style={{
-              background: getGradientStyle(rank.gradient).card,
-              border: `2px solid ${getGradientStyle(rank.gradient).border}`,
-              boxShadow: `0 4px 24px rgba(0,0,0,0.5), 0 0 40px ${getGradientStyle(rank.gradient).border}`,
-            }}>
-              <div className="rpg-card-header" style={{
-                background: getGradientStyle(rank.gradient).header,
-                borderBottom: `1px solid ${getGradientStyle(rank.gradient).border}`,
-              }}>
-                <div className="rpg-rank-icon" style={{
-                  border: `1px solid ${getGradientStyle(rank.gradient).border}`,
-                  background: getGradientStyle(rank.gradient).header,
-                }}>👑</div>
-                <div>
-                  <div className="rpg-rank-name">{rank.name}</div>
-                  <div className="rpg-rank-sub">Permanent Rank</div>
+            <div
+              className="rpg-card"
+              style={{
+                background: getGradientStyle(product.gradient).card,
+                border: `2px solid ${getGradientStyle(product.gradient).border}`,
+                boxShadow: `0 4px 24px rgba(0,0,0,0.5), 0 0 40px ${getGradientStyle(product.gradient).border}`,
+              }}
+            >
+              <div
+                className="rpg-card-header"
+                style={{
+                  background: getGradientStyle(product.gradient).header,
+                  borderBottom: `1px solid ${getGradientStyle(product.gradient).border}`,
+                }}
+              >
+                <div
+                  className="rpg-rank-icon"
+                  style={{
+                    border: `1px solid ${getGradientStyle(product.gradient).border}`,
+                    background: getGradientStyle(product.gradient).header,
+                  }}
+                >
+                  {getProductIcon()}
                 </div>
-                {(rank.discount ?? 0) > 0 && (
-                  <div className="rpg-discount-badge">-{rank.discount}% OFF</div>
+                <div>
+                  <div className="rpg-rank-name">{product.name}</div>
+                  <div className="rpg-rank-sub">
+                    {productType === "rank" && "Permanent Rank"}
+                    {productType === "money" && "In-Game Currency"}
+                    {productType === "points" && "Server Points"}
+                    {productType === "skill" &&
+                      `${product.skillLevel} Level Upgrade`}
+                  </div>
+                </div>
+                {(product.discount ?? 0) > 0 && (
+                  <div className="rpg-discount-badge">
+                    -{product.discount}% OFF
+                  </div>
                 )}
               </div>
 
-              {rank.features && rank.features.length > 0 && (
+              {/* Detail spesifik per tipe */}
+              {productType === "rank" &&
+                product.features &&
+                product.features.length > 0 && (
+                  <div className="rpg-section">
+                    <div className="rpg-section-label">
+                      Commands & Abilities
+                    </div>
+                    <div className="rpg-tags">
+                      {product.features.map((f) => (
+                        <span key={f} className="rpg-tag">
+                          {f}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+              {productType === "rank" && product.bonus && (
                 <div className="rpg-section">
-                  <div className="rpg-section-label">Commands & Abilities</div>
-                  <div className="rpg-tags">
-                    {rank.features.map((f) => <span key={f} className="rpg-tag">{f}</span>)}
+                  <div className="rpg-section-label">Bonus Stats</div>
+                  <div className="rpg-stats-grid">
+                    {product.bonus.claimblock && (
+                      <div className="rpg-stat-item">
+                        <span className="rpg-stat-icon">🎁</span>
+                        <span className="rpg-stat-label">Claimblock</span>
+                        <span className="rpg-stat-val">
+                          {product.bonus.claimblock}
+                        </span>
+                      </div>
+                    )}
+                    {product.bonus.claim && (
+                      <div className="rpg-stat-item">
+                        <span className="rpg-stat-icon">📌</span>
+                        <span className="rpg-stat-label">Claim</span>
+                        <span className="rpg-stat-val">
+                          {product.bonus.claim}
+                        </span>
+                      </div>
+                    )}
+                    {product.bonus.sethome && (
+                      <div className="rpg-stat-item">
+                        <span className="rpg-stat-icon">🏠</span>
+                        <span className="rpg-stat-label">Sethome</span>
+                        <span className="rpg-stat-val">
+                          {product.bonus.sethome}
+                        </span>
+                      </div>
+                    )}
+                    {product.bonus.money && (
+                      <div className="rpg-stat-item">
+                        <span className="rpg-stat-icon">💰</span>
+                        <span className="rpg-stat-label">Starter Money</span>
+                        <span className="rpg-stat-val">
+                          {product.bonus.money}
+                        </span>
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
 
-              {rank.bonus && (
+              {productType === "money" && (
                 <div className="rpg-section">
-                  <div className="rpg-section-label">Bonus Stats</div>
+                  <div className="rpg-section-label">Detail Paket</div>
                   <div className="rpg-stats-grid">
-                    {rank.bonus.claimblock && <div className="rpg-stat-item"><span className="rpg-stat-icon">🎁</span><span className="rpg-stat-label">Claimblock</span><span className="rpg-stat-val">{rank.bonus.claimblock}</span></div>}
-                    {rank.bonus.claim && <div className="rpg-stat-item"><span className="rpg-stat-icon">📌</span><span className="rpg-stat-label">Claim</span><span className="rpg-stat-val">{rank.bonus.claim}</span></div>}
-                    {rank.bonus.sethome && <div className="rpg-stat-item"><span className="rpg-stat-icon">🏠</span><span className="rpg-stat-label">Sethome</span><span className="rpg-stat-val">{rank.bonus.sethome}</span></div>}
-                    {rank.bonus.money && <div className="rpg-stat-item"><span className="rpg-stat-icon">💰</span><span className="rpg-stat-label">Starter Money</span><span className="rpg-stat-val">{rank.bonus.money}</span></div>}
+                    <div className="rpg-stat-item">
+                      <span className="rpg-stat-icon">💰</span>
+                      <span className="rpg-stat-label">Jumlah Money</span>
+                      <span className="rpg-stat-val">
+                        {product.moneyAmount}
+                      </span>
+                    </div>
+                    <div className="rpg-stat-item">
+                      <span className="rpg-stat-icon">⚡</span>
+                      <span className="rpg-stat-label">Pengiriman</span>
+                      <span className="rpg-stat-val">Instant</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {productType === "points" && (
+                <div className="rpg-section">
+                  <div className="rpg-section-label">Detail Paket</div>
+                  <div className="rpg-stats-grid">
+                    <div className="rpg-stat-item">
+                      <span className="rpg-stat-icon">⭐</span>
+                      <span className="rpg-stat-label">Jumlah Points</span>
+                      <span className="rpg-stat-val">
+                        {product.pointsAmount}
+                      </span>
+                    </div>
+                    <div className="rpg-stat-item">
+                      <span className="rpg-stat-icon">⚡</span>
+                      <span className="rpg-stat-label">Pengiriman</span>
+                      <span className="rpg-stat-val">Instant</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {productType === "skill" && (
+                <div className="rpg-section">
+                  <div className="rpg-section-label">Detail Upgrade</div>
+                  <div className="rpg-stats-grid">
+                    <div className="rpg-stat-item">
+                      <span className="rpg-stat-icon">⚡</span>
+                      <span className="rpg-stat-label">Skill</span>
+                      <span className="rpg-stat-val">{product.skillName}</span>
+                    </div>
+                    <div className="rpg-stat-item">
+                      <span className="rpg-stat-icon">📈</span>
+                      <span className="rpg-stat-label">Level</span>
+                      <span className="rpg-stat-val">
+                        +{product.skillLevel}
+                      </span>
+                    </div>
+                    <div className="rpg-stat-item">
+                      <span className="rpg-stat-icon">💰</span>
+                      <span className="rpg-stat-label">Per Level</span>
+                      <span className="rpg-stat-val">Rp 5.000</span>
+                    </div>
+                    <div className="rpg-stat-item">
+                      <span className="rpg-stat-icon">⚡</span>
+                      <span className="rpg-stat-label">Pengiriman</span>
+                      <span className="rpg-stat-val">Instant</span>
+                    </div>
                   </div>
                 </div>
               )}
@@ -355,35 +790,73 @@ export default function PaymentPage() {
               <div className="rpg-price-row">
                 <span className="rpg-price-label">Total Pembayaran</span>
                 <div className="rpg-price-wrap">
-                  {(rank.discount ?? 0) > 0 && <span className="rpg-price-original">{formatRupiah(rank.originalPriceNum)}</span>}
-                  {voucherApplied
-                    ? <><span className="rpg-price-original" style={{color:'#604030'}}>{formatRupiah(basePrice)}</span><span className="rpg-price-final">{formatRupiah(finalPrice)}</span></>
-                    : <span className="rpg-price-final">{formatRupiah(basePrice)}</span>
-                  }
+                  {(product.discount ?? 0) > 0 && (
+                    <span className="rpg-price-original">
+                      {formatRupiah(product.originalPriceNum)}
+                    </span>
+                  )}
+                  {voucherApplied ? (
+                    <>
+                      <span
+                        className="rpg-price-original"
+                        style={{ color: "#604030" }}
+                      >
+                        {formatRupiah(basePrice)}
+                      </span>
+                      <span className="rpg-price-final">
+                        {formatRupiah(finalPrice)}
+                      </span>
+                    </>
+                  ) : (
+                    <span className="rpg-price-final">
+                      {formatRupiah(basePrice)}
+                    </span>
+                  )}
                 </div>
               </div>
             </div>
 
             <div className="rpg-lore">
-              <span className="rpg-lore-label">📜 Lore</span>
-              <p className="rpg-lore-text">"Dengan rank <strong style={{ color: '#FFD700' }}>{rank.name}</strong>, kamu akan menjadi salah satu petualang terkuat di server. Kekuatan dan privilege menantimu di dunia VALORIA SMP."</p>
+              <span className="rpg-lore-label">📜 Info</span>
+              <p className="rpg-lore-text">
+                {productType === "rank" &&
+                  `"Dengan rank ${product.name}, kamu akan menjadi salah satu petualang terkuat di server. Kekuatan dan privilege menantimu di dunia VALORIA SMP."`}
+                {productType === "money" &&
+                  `"Dengan ${product.moneyAmount} in-game money, kamu bisa memulai petualangan ekonomi di dunia VALORIA SMP dengan modal yang cukup."`}
+                {productType === "points" &&
+                  `"Dengan ${product.pointsAmount} server points, kamu bisa menukarnya dengan berbagai reward eksklusif di VALORIA SMP."`}
+                {productType === "skill" &&
+                  `"Tingkatkan skill ${product.skillName} sebanyak ${product.skillLevel} level dan jadilah petualang yang lebih kuat di VALORIA SMP."`}
+              </p>
             </div>
           </motion.div>
 
-          {/* RIGHT — Scrollable Form */}
-          <motion.div initial={{ opacity: 0, x: 24 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.45, delay: 0.2 }}>
-            <div className="rpg-card" style={{
-              background: getGradientStyle(rank.gradient).card,
-              border: `2px solid ${getGradientStyle(rank.gradient).border}`,
-              boxShadow: `0 4px 24px rgba(0,0,0,0.5), 0 0 40px ${getGradientStyle(rank.gradient).border}`,
-            }}>
-              <div className="rpg-card-header" style={{
-                background: getGradientStyle(rank.gradient).header,
-                borderBottom: `1px solid ${getGradientStyle(rank.gradient).border}`,
-              }}>
+          {/* RIGHT — Form */}
+          <motion.div
+            initial={{ opacity: 0, x: 24 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.45, delay: 0.2 }}
+          >
+            <div
+              className="rpg-card"
+              style={{
+                background: getGradientStyle(product.gradient).card,
+                border: `2px solid ${getGradientStyle(product.gradient).border}`,
+                boxShadow: `0 4px 24px rgba(0,0,0,0.5), 0 0 40px ${getGradientStyle(product.gradient).border}`,
+              }}
+            >
+              <div
+                className="rpg-card-header"
+                style={{
+                  background: getGradientStyle(product.gradient).header,
+                  borderBottom: `1px solid ${getGradientStyle(product.gradient).border}`,
+                }}
+              >
                 <div>
                   <div className="rpg-form-title">Identitas Petualang</div>
-                  <div className="rpg-rank-sub">Masukkan username Minecraft kamu</div>
+                  <div className="rpg-rank-sub">
+                    Masukkan username Minecraft kamu
+                  </div>
                 </div>
               </div>
 
@@ -395,44 +868,116 @@ export default function PaymentPage() {
                     type="text"
                     placeholder="Contoh: Steve123"
                     value={username}
-                    onChange={(e) => { setUsername(e.target.value); checkPlayer(e.target.value); }}
+                    onChange={(e) => {
+                      setUsername(e.target.value);
+                      checkPlayer(e.target.value);
+                    }}
                     className="rpg-input"
                   />
-                  <span className="rpg-hint">Harus sudah pernah join server VALORIA SMP</span>
+                  <span className="rpg-hint">
+                    Harus sudah pernah join server VALORIA SMP
+                  </span>
                 </div>
 
                 <AnimatePresence mode="wait">
                   {isCheckingPlayer && (
-                    <motion.div key="checking" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="rpg-status rpg-status--loading">
-                      <Loader2 size={14} className="animate-spin" /><span>Mencari petualang di database...</span>
+                    <motion.div
+                      key="checking"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      className="rpg-status rpg-status--loading"
+                    >
+                      <Loader2 size={14} className="animate-spin" />
+                      <span>Mencari petualang di database...</span>
                     </motion.div>
                   )}
                   {!isCheckingPlayer && username && isPlayerFound && (
-                    <motion.div key="found" initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="rpg-status rpg-status--success">
+                    <motion.div
+                      key="found"
+                      initial={{ opacity: 0, y: -6 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0 }}
+                      className="rpg-status rpg-status--success"
+                    >
                       <CheckCircle2 size={15} />
-                      <div><div className="rpg-status-title">Petualang ditemukan</div><div className="rpg-status-username">{username}</div></div>
+                      <div>
+                        <div className="rpg-status-title">
+                          Petualang ditemukan
+                        </div>
+                        <div className="rpg-status-username">{username}</div>
+                      </div>
                     </motion.div>
                   )}
                   {!isCheckingPlayer && username && !isPlayerFound && (
-                    <motion.div key="notfound" initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="rpg-status rpg-status--error">
+                    <motion.div
+                      key="notfound"
+                      initial={{ opacity: 0, y: -6 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0 }}
+                      className="rpg-status rpg-status--error"
+                    >
                       <AlertCircle size={15} />
-                      <div><div className="rpg-status-title">Petualang tidak ditemukan</div><div style={{ fontSize: '12px', opacity: 0.7 }}>Pastikan username benar & sudah pernah join server</div></div>
+                      <div>
+                        <div className="rpg-status-title">
+                          Petualang tidak ditemukan
+                        </div>
+                        <div style={{ fontSize: "12px", opacity: 0.7 }}>
+                          Pastikan username benar & sudah pernah join server
+                        </div>
+                      </div>
                     </motion.div>
                   )}
                 </AnimatePresence>
 
                 {/* Voucher */}
-                <div className="rpg-divider"><span>Voucher</span></div>
+                <div className="rpg-divider">
+                  <span>Voucher</span>
+                </div>
                 <div className="rpg-field">
-                  <label className="rpg-label"><Tag size={11} style={{display:'inline',marginRight:4}} />Kode Voucher (opsional)</label>
+                  <label className="rpg-label">
+                    <Tag
+                      size={11}
+                      style={{ display: "inline", marginRight: 4 }}
+                    />
+                    Kode Voucher (opsional)
+                  </label>
                   {voucherApplied ? (
                     <div className="rpg-voucher-applied">
-                      <CheckCircle2 size={14} style={{color:'#4ade80',flexShrink:0}} />
-                      <div style={{flex:1}}>
-                        <div style={{color:'#4ade80',fontSize:'12px',fontWeight:600}}>{voucherCode.toUpperCase()}</div>
-                        <div style={{color:'#4ade80',fontSize:'11px',opacity:0.8}}>{voucherMessage}</div>
+                      <CheckCircle2
+                        size={14}
+                        style={{ color: "#4ade80", flexShrink: 0 }}
+                      />
+                      <div style={{ flex: 1 }}>
+                        <div
+                          style={{
+                            color: "#4ade80",
+                            fontSize: "12px",
+                            fontWeight: 600,
+                          }}
+                        >
+                          {voucherCode.toUpperCase()}
+                        </div>
+                        <div
+                          style={{
+                            color: "#4ade80",
+                            fontSize: "11px",
+                            opacity: 0.8,
+                          }}
+                        >
+                          {voucherMessage}
+                        </div>
                       </div>
-                      <button onClick={removeVoucher} style={{background:'none',border:'none',cursor:'pointer',color:'#806040',padding:4}}>
+                      <button
+                        onClick={removeVoucher}
+                        style={{
+                          background: "none",
+                          border: "none",
+                          cursor: "pointer",
+                          color: "#806040",
+                          padding: 4,
+                        }}
+                      >
                         <X size={14} />
                       </button>
                     </div>
@@ -442,7 +987,10 @@ export default function PaymentPage() {
                         type="text"
                         placeholder="Masukkan kode voucher"
                         value={voucherCode}
-                        onChange={(e) => { setVoucherCode(e.target.value.toUpperCase()); setVoucherMessage(""); }}
+                        onChange={(e) => {
+                          setVoucherCode(e.target.value.toUpperCase());
+                          setVoucherMessage("");
+                        }}
                         onKeyDown={(e) => e.key === "Enter" && checkVoucher()}
                         className="rpg-input rpg-voucher-input"
                       />
@@ -451,68 +999,138 @@ export default function PaymentPage() {
                         disabled={!voucherCode.trim() || isCheckingVoucher}
                         className="rpg-voucher-btn"
                       >
-                        {isCheckingVoucher ? <Loader2 size={13} className="animate-spin" /> : "Pakai"}
+                        {isCheckingVoucher ? (
+                          <Loader2 size={13} className="animate-spin" />
+                        ) : (
+                          "Pakai"
+                        )}
                       </button>
                     </div>
                   )}
                   {voucherMessage && !voucherApplied && (
-                    <span style={{color:'#f87171',fontSize:'11px'}}>{voucherMessage}</span>
+                    <span style={{ color: "#f87171", fontSize: "11px" }}>
+                      {voucherMessage}
+                    </span>
                   )}
                 </div>
 
                 {/* Metode */}
-                <div className="rpg-divider"><span>Metode Pembayaran</span></div>
+                <div className="rpg-divider">
+                  <span>Metode Pembayaran</span>
+                </div>
                 <div className="rpg-methods">
                   {visibleCategories.map((cat) => (
                     <div key={cat}>
-                      <div className="rpg-method-category">{CATEGORY_LABELS[cat]}</div>
+                      <div className="rpg-method-category">
+                        {CATEGORY_LABELS[cat]}
+                      </div>
                       <div className="rpg-method-grid">
                         {grouped[cat]?.map((method) => (
                           <button
                             key={method.id}
                             onClick={() => setSelectedMethod(method.id)}
-                            className={`rpg-method-btn ${selectedMethod === method.id ? 'rpg-method-btn--active' : ''}`}
+                            className={`rpg-method-btn ${selectedMethod === method.id ? "rpg-method-btn--active" : ""}`}
                           >
-                            <img src={method.icon} alt={method.label} className="rpg-method-icon" />
-                            <span className="rpg-method-label">{method.label}</span>
+                            <img
+                              src={method.icon}
+                              alt={method.label}
+                              className="rpg-method-icon"
+                            />
+                            <span className="rpg-method-label">
+                              {method.label}
+                            </span>
                           </button>
                         ))}
                       </div>
                     </div>
                   ))}
-                  <button onClick={() => setShowAll(!showAll)} className="rpg-show-more">
-                    {showAll ? <><ChevronUp size={13} /> Tampilkan lebih sedikit</> : <><ChevronDown size={13} /> Lihat semua metode (Minimarket, Paylater)</>}
+                  <button
+                    onClick={() => setShowAll(!showAll)}
+                    className="rpg-show-more"
+                  >
+                    {showAll ? (
+                      <>
+                        <ChevronUp size={13} /> Tampilkan lebih sedikit
+                      </>
+                    ) : (
+                      <>
+                        <ChevronDown size={13} /> Lihat semua metode
+                        (Minimarket, Paylater)
+                      </>
+                    )}
                   </button>
                 </div>
 
                 {/* Summary */}
-                <div className="rpg-divider"><span>Order Summary</span></div>
+                <div className="rpg-divider">
+                  <span>Order Summary</span>
+                </div>
                 <div className="rpg-summary">
-                  <div className="rpg-summary-row"><span>Item</span><span style={{ color: '#FFD700', fontWeight: 600 }}>Rank {rank.name}</span></div>
-                  <div className="rpg-summary-row"><span>Player</span><span style={{ color: '#d4a96a' }}>{isPlayerFound ? username : '—'}</span></div>
-                  <div className="rpg-summary-row"><span>Metode</span><span style={{ color: '#d4a96a' }}>{selectedMethod ? PAYMENT_METHODS.find(m => m.id === selectedMethod)?.label : '—'}</span></div>
+                  <div className="rpg-summary-row">
+                    <span>Item</span>
+                    <span style={{ color: "#FFD700", fontWeight: 600 }}>
+                      {product.name}
+                    </span>
+                  </div>
+                  <div className="rpg-summary-row">
+                    <span>Player</span>
+                    <span style={{ color: "#d4a96a" }}>
+                      {isPlayerFound ? username : "—"}
+                    </span>
+                  </div>
+                  <div className="rpg-summary-row">
+                    <span>Metode</span>
+                    <span style={{ color: "#d4a96a" }}>
+                      {selectedMethod
+                        ? PAYMENT_METHODS.find((m) => m.id === selectedMethod)
+                            ?.label
+                        : "—"}
+                    </span>
+                  </div>
                   {voucherApplied && (
                     <div className="rpg-summary-row">
                       <span>Diskon Voucher</span>
-                      <span style={{ color: '#4ade80' }}>- {formatRupiah(discountAmount)}</span>
+                      <span style={{ color: "#4ade80" }}>
+                        - {formatRupiah(discountAmount)}
+                      </span>
                     </div>
                   )}
-                  <div className="rpg-summary-row"><span>Tipe</span><span style={{ color: '#4ade80' }}>Permanent</span></div>
                   <div className="rpg-summary-row rpg-summary-total">
                     <span>TOTAL</span>
-                    <span className="rpg-price-final">{formatRupiah(finalPrice)}</span>
+                    <span className="rpg-price-final">
+                      {formatRupiah(finalPrice)}
+                    </span>
                   </div>
                 </div>
 
-                <button onClick={handlePayment} disabled={!canPay} className={`rpg-pay-btn ${!canPay ? 'rpg-pay-btn--disabled' : ''}`}>
-                  {isLoading ? <><Loader2 size={16} className="animate-spin" /> Memproses...</> : <>⚔ Bayar {formatRupiah(finalPrice)}</>}
+                <button
+                  onClick={handlePayment}
+                  disabled={!canPay}
+                  className={`rpg-pay-btn ${!canPay ? "rpg-pay-btn--disabled" : ""}`}
+                >
+                  {isLoading ? (
+                    <>
+                      <Loader2 size={16} className="animate-spin" />{" "}
+                      Memproses...
+                    </>
+                  ) : (
+                    <>⚔ Bayar {formatRupiah(finalPrice)}</>
+                  )}
                 </button>
 
-                <p className="rpg-secure-note">🔒 Pembayaran aman via Midtrans · Rank otomatis aktif setelah bayar</p>
+                <p className="rpg-secure-note">
+                  🔒 Pembayaran aman via Midtrans · Item otomatis dikirim
+                  setelah bayar
+                </p>
               </div>
             </div>
 
-            <button onClick={() => router.push("/store")} className="rpg-back-btn">← Kembali ke Store</button>
+            <button
+              onClick={() => router.push("/store")}
+              className="rpg-back-btn"
+            >
+              ← Kembali ke Store
+            </button>
           </motion.div>
         </div>
       </div>
@@ -525,9 +1143,7 @@ export default function PaymentPage() {
         .rpg-subtitle { color: #64748b; font-size: 13px; }
         .rpg-grid { max-width: 980px; margin: 0 auto; display: grid; grid-template-columns: 1fr 1fr; gap: 24px; align-items: start; }
         @media (max-width: 720px) { .rpg-grid { grid-template-columns: 1fr; } }
-
         .rpg-left-col { }
-
         .rpg-card { background: linear-gradient(135deg, rgba(50,32,12,0.92) 0%, rgba(70,45,18,0.92) 100%); border: 2px solid rgba(180,120,50,0.6); box-shadow: 0 4px 24px rgba(0,0,0,0.4), inset 0 0 24px rgba(0,0,0,0.1); overflow: hidden; margin-bottom: 16px; }
         .rpg-card-header { display: flex; align-items: center; gap: 14px; background: linear-gradient(90deg, rgba(180,120,50,0.3), rgba(220,160,70,0.2), rgba(180,120,50,0.3)); border-bottom: 1px solid rgba(180,120,50,0.5); padding: 16px 20px; }
         .rpg-rank-icon { width: 48px; height: 48px; flex-shrink: 0; background: rgba(180,120,50,0.3); border: 2px solid rgba(180,120,50,0.6); display: flex; align-items: center; justify-content: center; font-size: 22px; }
@@ -558,15 +1174,12 @@ export default function PaymentPage() {
         .rpg-input { background: rgba(30,18,6,0.7); border: 1px solid rgba(180,120,50,0.45); color: #FFD700; padding: 10px 14px; font-size: 13px; outline: none; width: 100%; box-sizing: border-box; transition: border-color 0.2s; font-family: inherit; }
         .rpg-input:focus { border-color: rgba(255,215,0,0.6); }
         .rpg-hint { color: #475569; font-size: 11px; }
-
-        /* Voucher */
         .rpg-voucher-input-wrap { display: flex; gap: 6px; }
         .rpg-voucher-input { flex: 1; letter-spacing: 0.1em; }
         .rpg-voucher-btn { background: rgba(139,90,43,0.3); border: 1px solid rgba(139,90,43,0.6); color: #d4a96a; padding: 10px 16px; font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.2s; white-space: nowrap; font-family: inherit; flex-shrink: 0; }
         .rpg-voucher-btn:hover:not(:disabled) { background: rgba(139,90,43,0.5); color: #FFD700; }
         .rpg-voucher-btn:disabled { opacity: 0.5; cursor: not-allowed; }
         .rpg-voucher-applied { display: flex; align-items: center; gap: 10px; background: rgba(16,185,129,0.1); border: 1px solid rgba(16,185,129,0.3); padding: 10px 12px; }
-
         .rpg-status { display: flex; align-items: flex-start; gap: 10px; padding: 12px 14px; font-size: 13px; }
         .rpg-status--loading { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: #94a3b8; }
         .rpg-status--success { background: rgba(16,185,129,0.1); border: 1px solid rgba(16,185,129,0.3); color: #4ade80; }
