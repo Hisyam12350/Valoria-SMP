@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { Crown, Package, Zap, ShoppingCart, Star, Loader2 } from "lucide-react";
@@ -39,7 +39,27 @@ import {
 
 type PurchaseItemType = "points" | "money" | "skills";
 
-// ─── Formatting helpers ──────────────────────────────────────────────────────
+// ─── Types ────────────────────────────────────────────────────────────────────
+
+interface PointsItem {
+  rank: string;
+  slug: string;
+  color: string;
+  harga: number;
+  points: string;
+  gradient: string;
+}
+
+interface MoneyItem {
+  rank: string;
+  slug: string;
+  color: string;
+  harga: number;
+  money: string;
+  gradient: string;
+}
+
+// ─── Formatting helpers ───────────────────────────────────────────────────────
 
 function formatMoney(num: number): string {
   if (num >= 1_000_000_000_000)
@@ -61,7 +81,7 @@ function calculateDiscountedPrice(originalPrice: number, discount: number): numb
   return Math.floor(originalPrice * (1 - discount / 100));
 }
 
-// ─── Midtrans pay helper ─────────────────────────────────────────────────────
+// ─── Midtrans pay helper ──────────────────────────────────────────────────────
 
 async function triggerSnapPayment({
   uuid,
@@ -137,21 +157,57 @@ export default function StorePage() {
       ? (rawSkills as string[])
       : AVAILABLE_SKILLS;
 
+  // ── Dynamic data from API ──
+  const [pointsStore, setPointsStore] = useState<PointsItem[]>([]);
+  const [moneyStore, setMoneyStore] = useState<MoneyItem[]>([]);
+  const [isLoadingPoints, setIsLoadingPoints] = useState(true);
+  const [isLoadingMoney, setIsLoadingMoney] = useState(true);
+
+  useEffect(() => {
+    // Fetch points store
+    fetch("/api/store/get-points")
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.success && Array.isArray(data.points)) {
+          setPointsStore(data.points);
+        }
+      })
+      .catch(() => {
+        toast({ title: "Error", description: "Gagal memuat data points", variant: "destructive" });
+      })
+      .finally(() => setIsLoadingPoints(false));
+
+    // Fetch money store
+    fetch("/api/store/get-money")
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.success && Array.isArray(data.money)) {
+          setMoneyStore(data.money);
+        }
+      })
+      .catch(() => {
+        toast({ title: "Error", description: "Gagal memuat data money", variant: "destructive" });
+      })
+      .finally(() => setIsLoadingMoney(false));
+  }, []);
+
   // Dialog state
   const [purchaseDialogOpen, setPurchaseDialogOpen] = useState(false);
   const [purchaseType, setPurchaseType] = useState<PurchaseItemType>("points");
 
-  // Player form state (used inside dialog for non-rank purchases)
+  // Selected item for points/money
+  const [selectedPointsItem, setSelectedPointsItem] = useState<PointsItem | null>(null);
+  const [selectedMoneyItem, setSelectedMoneyItem] = useState<MoneyItem | null>(null);
+
+  // Player form state
   const [playerName, setPlayerName] = useState("");
   const [playerUuid, setPlayerUuid] = useState("");
-  const [platform, setPlatform] = useState("java");
   const [isCheckingPlayer, setIsCheckingPlayer] = useState(false);
   const [isPlayerFound, setIsPlayerFound] = useState(false);
 
-  // Items state
+  // Skills state
   const [selectedSkill, setSelectedSkill] = useState<string>("");
   const [skillLevel, setSkillLevel] = useState<number>(1);
-  const [pointsPrice, setPointsPrice] = useState<number>(0);
   const [moneyPrice, setMoneyPrice] = useState<number>(0);
 
   const [isLoading, setIsLoading] = useState(false);
@@ -174,7 +230,21 @@ export default function StorePage() {
     setPurchaseDialogOpen(true);
   };
 
-  // ── Check player via UUID ──
+  // ── Buka dialog khusus Points item ──
+  const openPointsDialog = (item: PointsItem) => {
+    setSelectedPointsItem(item);
+    setSelectedMoneyItem(null);
+    openDialog("points");
+  };
+
+  // ── Buka dialog khusus Money item ──
+  const openMoneyDialog = (item: MoneyItem) => {
+    setSelectedMoneyItem(item);
+    setSelectedPointsItem(null);
+    openDialog("money");
+  };
+
+  // ── Check player ──
   const checkPlayer = async (uuid: string) => {
     if (!uuid.trim()) {
       setPlayerName("");
@@ -209,27 +279,25 @@ export default function StorePage() {
     slug: string;
     price: number;
   } | null => {
+    if (purchaseType === "points" && selectedPointsItem) {
+      return {
+        productName: `${selectedPointsItem.points} Points (${selectedPointsItem.rank})`,
+        slug: `points-${selectedPointsItem.slug}`,
+        price: selectedPointsItem.harga,
+      };
+    }
+    if (purchaseType === "money" && selectedMoneyItem) {
+      return {
+        productName: `${selectedMoneyItem.money} In-Game Money (${selectedMoneyItem.rank})`,
+        slug: `money-${selectedMoneyItem.slug}`,
+        price: selectedMoneyItem.harga,
+      };
+    }
     if (purchaseType === "skills" && selectedSkill) {
       return {
         productName: `Skill ${selectedSkill} x${skillLevel} Level`,
         slug: `skill-${selectedSkill.toLowerCase().replace(/\s+/g, "-")}`,
         price: skillLevel * SKILL_PRICE_PER_LEVEL,
-      };
-    }
-    if (purchaseType === "points" && pointsPrice >= POINTS_PRICE_PER_AMOUNT) {
-      const totalPoints = Math.floor(pointsPrice / POINTS_PRICE_PER_AMOUNT) * POINTS_PER_PURCHASE;
-      return {
-        productName: `${totalPoints.toLocaleString("id-ID")} Points`,
-        slug: "points",
-        price: pointsPrice,
-      };
-    }
-    if (purchaseType === "money" && moneyPrice >= MONEY_PRICE_PER_AMOUNT) {
-      const totalMoney = Math.floor((moneyPrice / MONEY_PRICE_PER_AMOUNT) * MONEY_PER_PURCHASE);
-      return {
-        productName: `$${formatMoney(totalMoney)} In-Game Money`,
-        slug: "money",
-        price: moneyPrice,
       };
     }
     return null;
@@ -411,287 +479,155 @@ export default function StorePage() {
               </div>
             </TabsContent>
 
-            
-{/* ── Points Tab ── */}
-<TabsContent value="points">
-  <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
+            {/* ── Points Tab ── */}
+            <TabsContent value="points">
+              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
+                {isLoadingPoints ? (
+                  <div className="flex justify-center items-center py-20">
+                    <Loader2 className="w-8 h-8 animate-spin text-emerald-400" />
+                  </div>
+                ) : (
+                  <>
+                    <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 mb-8">
+                      {pointsStore.map((item, index) => (
+                        <motion.div
+                          key={item.slug}
+                          initial={{ opacity: 0, y: 20 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ delay: index * 0.05 }}
+                          className="h-full"
+                        >
+                          <Card className="glass border-0 h-full flex flex-col hover:scale-[1.02] transition-all duration-300">
+                            <CardHeader className="text-center pb-1 pt-4">
+                              <div className="text-2xl mb-1">⭐</div>
+                              <div className={`text-sm font-bold font-minecraft ${item.color}`}>
+                                {item.rank}
+                              </div>
+                              <div className="text-base font-bold text-white">
+                                {item.points} Points
+                              </div>
+                            </CardHeader>
+                            <CardContent className="space-y-3 flex flex-col flex-1">
+                              <div className="space-y-1 text-xs">
+                                <p className="text-gray-400">
+                                  ⭐ <span className="text-emerald-400">{item.points}</span> server points
+                                </p>
+                                <p className="text-gray-400">
+                                  ⚡ <span className="text-emerald-400">Instant</span> dikirim
+                                </p>
+                              </div>
+                              <div className="text-center">
+                                <span className="text-lg font-bold text-white">
+                                  {formatRupiah(item.harga)}
+                                </span>
+                              </div>
+                              <Button
+                                onClick={() => openPointsDialog(item)}
+                                className={`w-full mt-auto bg-gradient-to-r ${item.gradient} hover:opacity-90 text-white text-sm h-8`}
+                              >
+                                <ShoppingCart className="w-3 h-3 mr-1" />
+                                Beli Sekarang
+                              </Button>
+                            </CardContent>
+                          </Card>
+                        </motion.div>
+                      ))}
+                    </div>
 
-    {/* Starter Packs */}
-    <div className="flex items-center gap-3 mb-4">
-      <div className="h-px flex-1 bg-white/10" />
-      <span className="text-xs text-gray-400 uppercase tracking-widest">✦ Starter Packs ✦</span>
-      <div className="h-px flex-1 bg-white/10" />
-    </div>
-
-    <div className="grid sm:grid-cols-3 lg:grid-cols-5 gap-4 mb-8">
-      {[
-        { price: 5000 },
-        { price: 10000 },
-        { price: 15000 },
-        { price: 20000 },
-        { price: 25000 },
-      ].map(({ price }, index) => {
-        const totalPoints = Math.floor((price / POINTS_PRICE_PER_AMOUNT) * POINTS_PER_PURCHASE);
-
-        return (
-          <motion.div
-            key={price}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: index * 0.05 }}
-            className="h-full"
-          >
-            <Card className="glass border-0 h-full flex flex-col hover:scale-[1.02] transition-all duration-300">
-              
-              <CardHeader className="text-center pb-1 pt-4">
-                <div className="text-2xl mb-1">⭐</div>
-
-                <div className="text-base font-bold text-white">
-                  {totalPoints.toLocaleString("id-ID")} Points
-                </div>
-              </CardHeader>
-
-              <CardContent className="space-y-3 flex flex-col flex-1">
-                
-                <div className="space-y-1 text-xs">
-                  <p className="text-gray-400">
-                    ⭐{" "}
-                    <span className="text-emerald-400">
-                      {totalPoints.toLocaleString("id-ID")}
-                    </span>{" "}
-                    server points
-                  </p>
-
-                  <p className="text-gray-400">
-                    ⚡ <span className="text-emerald-400">Instant</span> dikirim
-                  </p>
-                </div>
-
-                <div className="text-center">
-                  <span className="text-lg font-bold text-white">
-                    Rp {price.toLocaleString("id-ID")}
-                  </span>
-                </div>
-
-                <Button
-                  onClick={() => {
-                    setPointsPrice(price);
-                    openDialog("points");
-                  }}
-                  className="w-full mt-auto bg-gradient-to-r from-green-500 to-emerald-500 hover:opacity-90 text-white text-sm h-8"
-                >
-                  <ShoppingCart className="w-3 h-3 mr-1" />
-                  Beli Sekarang
-                </Button>
-
-              </CardContent>
-            </Card>
-          </motion.div>
-        );
-      })}
-    </div>
-
-    {/* Mega Packs */}
-    <div className="flex items-center gap-3 mb-4">
-      <div className="h-px flex-1 bg-white/10" />
-      <span className="text-xs text-gray-400 uppercase tracking-widest">✦ Mega Packs ✦</span>
-      <div className="h-px flex-1 bg-white/10" />
-    </div>
-
-    <div className="grid sm:grid-cols-3 lg:grid-cols-5 gap-4 mb-8">
-      {[
-        { price: 50000, popular: false, best: false, originalPrice: null },
-        { price: 100000, popular: true, best: false, originalPrice: 120000 },
-        { price: 200000, popular: false, best: false, originalPrice: null },
-        { price: 500000, popular: false, best: false, originalPrice: null },
-        { price: 1000000, popular: false, best: true, originalPrice: 1200000 },
-      ].map(({ price, popular, best, originalPrice }, index) => {
-        const totalPoints = Math.floor(
-          (price / POINTS_PRICE_PER_AMOUNT) * POINTS_PER_PURCHASE
-        );
-
-        const ptLabel =
-          totalPoints >= 1_000_000
-            ? (totalPoints / 1_000_000)
-                .toFixed(1)
-                .replace(/\.0$/, "") + "M"
-            : (totalPoints / 1_000)
-                .toFixed(1)
-                .replace(/\.0$/, "") + "K";
-
-        return (
-          <motion.div
-            key={price}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: index * 0.05 }}
-            className="relative h-full"
-          >
-            {popular && (
-              <div className="absolute -top-2 left-1/2 -translate-x-1/2 z-10">
-                <Badge className="bg-red-500 text-white text-[10px]">
-                  🔥 POPULER
-                </Badge>
-              </div>
-            )}
-
-            {best && (
-              <div className="absolute -top-2 left-1/2 -translate-x-1/2 z-10">
-                <Badge className="bg-amber-500 text-black text-[10px]">
-                  ⭐ BEST VALUE
-                </Badge>
-              </div>
-            )}
-
-            <Card
-              className={`glass border-0 h-full flex flex-col hover:scale-[1.02] transition-all duration-300 ${
-                popular
-                  ? "glow-purple"
-                  : best
-                  ? "glow-gold"
-                  : ""
-              }`}
-            >
-              <CardHeader className="text-center pb-1 pt-4">
-                <div className="text-2xl mb-1">⭐</div>
-
-                <div className="text-base font-bold text-white">
-                  {ptLabel} Points
-                </div>
-              </CardHeader>
-
-              <CardContent className="space-y-3 flex flex-col flex-1">
-                
-                <div className="space-y-1 text-xs">
-                  <p className="text-gray-400">
-                    ⭐{" "}
-                    <span className="text-amber-400">
-                      {totalPoints.toLocaleString("id-ID")}
-                    </span>{" "}
-                    server points
-                  </p>
-
-                  <p className="text-gray-400">
-                    ⚡ <span className="text-amber-400">Instant</span> dikirim
-                  </p>
-                </div>
-
-                <div className="flex flex-col items-center gap-0.5">
-                  {originalPrice && (
-                    <span className="text-sm text-gray-500 line-through">
-                      Rp {originalPrice.toLocaleString("id-ID")}
-                    </span>
-                  )}
-
-                  <span className="text-lg font-bold text-white">
-                    Rp {price.toLocaleString("id-ID")}
-                  </span>
-                </div>
-
-                <Button
-                  onClick={() => {
-                    setPointsPrice(price);
-                    openDialog("points");
-                  }}
-                  className="w-full mt-auto bg-gradient-to-r from-amber-500 to-orange-500 hover:opacity-90 text-white text-sm h-8"
-                >
-                  <ShoppingCart className="w-3 h-3 mr-1" />
-                  Beli Sekarang
-                </Button>
-
-              </CardContent>
-            </Card>
-          </motion.div>
-        );
-      })}
-    </div>
-
-    {/* Bottom features */}
-    <div className="flex justify-center">
-      <div className="flex flex-wrap justify-center gap-6 px-8 py-3 rounded-full bg-white/5 border border-white/10">
-        {[
-          { icon: "🔒", label: "100% Aman" },
-          { icon: "⚡", label: "Instant Delivery" },
-          { icon: "🏷️", label: "Best Price" },
-          { icon: "🎧", label: "24/7 Support" },
-        ].map((f, i) => (
-          <div
-            key={i}
-            className="flex items-center gap-2 text-sm text-gray-400"
-          >
-            <span>{f.icon}</span>
-            <span>{f.label}</span>
-          </div>
-        ))}
-      </div>
-    </div>
-
-  </motion.div>
-</TabsContent>
-
-
+                    {/* Bottom features */}
+                    <div className="flex justify-center">
+                      <div className="flex flex-wrap justify-center gap-6 px-8 py-3 rounded-full bg-white/5 border border-white/10">
+                        {[
+                          { icon: "🔒", label: "100% Aman" },
+                          { icon: "⚡", label: "Instant Delivery" },
+                          { icon: "🏷️", label: "Best Price" },
+                          { icon: "🎧", label: "24/7 Support" },
+                        ].map((f, i) => (
+                          <div key={i} className="flex items-center gap-2 text-sm text-gray-400">
+                            <span>{f.icon}</span>
+                            <span>{f.label}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </>
+                )}
+              </motion.div>
+            </TabsContent>
 
             {/* ── Money Tab ── */}
             <TabsContent value="money">
-              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="max-w-md mx-auto">
-                <Card className="glass border-0">
-                  <CardHeader className="text-center pb-2">
-                    <div className="w-14 h-14 rounded-full bg-gradient-to-br from-green-400 to-emerald-500 flex items-center justify-center mx-auto mb-3">
-                      <Package className="w-7 h-7 text-white" />
+              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
+                {isLoadingMoney ? (
+                  <div className="flex justify-center items-center py-20">
+                    <Loader2 className="w-8 h-8 animate-spin text-emerald-400" />
+                  </div>
+                ) : (
+                  <>
+                    <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 mb-8">
+                      {moneyStore.map((item, index) => (
+                        <motion.div
+                          key={item.slug}
+                          initial={{ opacity: 0, y: 20 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ delay: index * 0.05 }}
+                          className="h-full"
+                        >
+                          <Card className="glass border-0 h-full flex flex-col hover:scale-[1.02] transition-all duration-300">
+                            <CardHeader className="text-center pb-1 pt-4">
+                              <div className="text-2xl mb-1">💰</div>
+                              <div className={`text-sm font-bold font-minecraft ${item.color}`}>
+                                {item.rank}
+                              </div>
+                              <div className="text-base font-bold text-white">
+                                {item.money}
+                              </div>
+                            </CardHeader>
+                            <CardContent className="space-y-3 flex flex-col flex-1">
+                              <div className="space-y-1 text-xs">
+                                <p className="text-gray-400">
+                                  💰 <span className="text-emerald-400">{item.money}</span> in-game money
+                                </p>
+                                <p className="text-gray-400">
+                                  ⚡ <span className="text-emerald-400">Instant</span> dikirim
+                                </p>
+                              </div>
+                              <div className="text-center">
+                                <span className="text-lg font-bold text-white">
+                                  {formatRupiah(item.harga)}
+                                </span>
+                              </div>
+                              <Button
+                                onClick={() => openMoneyDialog(item)}
+                                className={`w-full mt-auto bg-gradient-to-r ${item.gradient} hover:opacity-90 text-white text-sm h-8`}
+                              >
+                                <ShoppingCart className="w-3 h-3 mr-1" />
+                                Beli Sekarang
+                              </Button>
+                            </CardContent>
+                          </Card>
+                        </motion.div>
+                      ))}
                     </div>
-                    <CardTitle className="text-lg">Beli In-Game Money</CardTitle>
-                    <p className="text-emerald-400 font-semibold">
-                      Rp {MONEY_PRICE_PER_AMOUNT.toLocaleString("id-ID")} / {formatMoney(MONEY_PER_PURCHASE)} Money
-                    </p>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="space-y-2">
-                      <Label className="text-sm text-gray-300">Masukkan Harga (Rp)</Label>
-                      <Input
-                        type="number"
-                        min="0"
-                        value={moneyPrice || ""}
-                        onChange={(e) => setMoneyPrice(parseInt(e.target.value) || 0)}
-                        className="bg-white/5 border-white/10"
-                        placeholder="Contoh: 4000"
-                      />
-                      <p className="text-xs text-gray-500">
-                        Rp {MONEY_PRICE_PER_AMOUNT.toLocaleString("id-ID")} = {formatMoney(MONEY_PER_PURCHASE)} Money
-                      </p>
-                    </div>
-                    <div className="p-4 rounded-lg bg-white/5 space-y-2">
-                      <div className="flex justify-between text-sm">
-                        <span className="text-gray-400">Total Money:</span>
-                        <span className="text-amber-400 font-bold text-lg">
-                          ${moneyPrice > 0
-                            ? formatMoney(Math.floor((moneyPrice / MONEY_PRICE_PER_AMOUNT) * MONEY_PER_PURCHASE))
-                            : "0"}
-                        </span>
+
+                    {/* Bottom features */}
+                    <div className="flex justify-center">
+                      <div className="flex flex-wrap justify-center gap-6 px-8 py-3 rounded-full bg-white/5 border border-white/10">
+                        {[
+                          { icon: "🔒", label: "100% Aman" },
+                          { icon: "⚡", label: "Instant Delivery" },
+                          { icon: "🏷️", label: "Best Price" },
+                          { icon: "🎧", label: "24/7 Support" },
+                        ].map((f, i) => (
+                          <div key={i} className="flex items-center gap-2 text-sm text-gray-400">
+                            <span>{f.icon}</span>
+                            <span>{f.label}</span>
+                          </div>
+                        ))}
                       </div>
-                      <p className="text-xs text-gray-500 text-right">
-                        ({moneyPrice > 0
-                          ? Math.floor((moneyPrice / MONEY_PRICE_PER_AMOUNT) * MONEY_PER_PURCHASE).toLocaleString("id-ID")
-                          : "0"})
-                      </p>
-                      <div className="border-t border-white/10 pt-2 mt-2">
-                        <div className="flex justify-between">
-                          <span className="text-gray-400">Total Harga:</span>
-                          <span className="text-emerald-400 font-bold text-lg">
-                            Rp {moneyPrice.toLocaleString("id-ID")}
-                          </span>
-                        </div>
-                      </div>
                     </div>
-                    <Button
-                      onClick={() => openDialog("money")}
-                      disabled={moneyPrice < MONEY_PRICE_PER_AMOUNT}
-                      className="w-full bg-gradient-to-r from-green-500 to-emerald-500 hover:opacity-90"
-                    >
-                      <ShoppingCart className="w-4 h-4 mr-2" />
-                      Beli Sekarang
-                    </Button>
-                  </CardContent>
-                </Card>
+                  </>
+                )}
               </motion.div>
             </TabsContent>
 
@@ -787,7 +723,7 @@ export default function StorePage() {
           </DialogHeader>
 
           <div className="space-y-4 py-2">
-            {/* UUID Input */}
+            {/* Username Input */}
             <div className="space-y-1.5">
               <Label htmlFor="playerUuid" className="text-sm">
                 Username Player
@@ -814,7 +750,7 @@ export default function StorePage() {
                 </div>
               )}
               {!isCheckingPlayer && playerUuid && !isPlayerFound && (
-                <p className="text-xs text-red-400">UUID tidak ditemukan</p>
+                <p className="text-xs text-red-400">Username tidak ditemukan</p>
               )}
             </div>
 

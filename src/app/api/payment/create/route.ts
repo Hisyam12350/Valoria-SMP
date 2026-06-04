@@ -1,5 +1,7 @@
+// src/app/api/payment/create/route.ts
 import { NextResponse } from "next/server";
 import midtransClient from "midtrans-client";
+import { supabaseAdmin } from "@/lib/supabase";
 
 const coreApi = new midtransClient.CoreApi({
   isProduction: process.env.MIDTRANS_IS_PRODUCTION === "true",
@@ -7,25 +9,45 @@ const coreApi = new midtransClient.CoreApi({
   clientKey: process.env.NEXT_PUBLIC_MIDTRANS_CLIENT_KEY!,
 });
 
+// ── Helper: tentukan kategori dari slug ──────────────────────────────────────
+function getCategoryFromSlug(slug: string): string {
+  if (slug.startsWith("points")) return "points";
+  if (slug.startsWith("money")) return "money";
+  if (slug.startsWith("skill")) return "skills";
+  return "rank";
+}
+
 export async function POST(req: Request) {
   try {
     const body = await req.json();
     const { uuid, username, productName, slug, price, paymentMethod } = body;
 
+    // ── Validasi input ───────────────────────────────────────────────────────
     if (!uuid || !username || !productName || !price || !paymentMethod) {
       return NextResponse.json(
-        { error: "Data tidak lengkap" },
-        { status: 400 },
+        { success: false, error: "Data tidak lengkap" },
+        { status: 400 }
+      );
+    }
+
+    const grossAmount = Number(price);
+    if (isNaN(grossAmount) || grossAmount <= 0) {
+      return NextResponse.json(
+        { success: false, error: "Harga tidak valid" },
+        { status: 400 }
       );
     }
 
     const orderId = `MC-${Date.now()}`;
-    const grossAmount = Number(price);
+    const category = getCategoryFromSlug(slug ?? "");
 
+    // ── Base Midtrans parameter ──────────────────────────────────────────────
     const base: any = {
       transaction_details: { order_id: orderId, gross_amount: grossAmount },
       customer_details: { first_name: username },
-      item_details: [{ id: slug ?? orderId, price: grossAmount, quantity: 1, name: productName }],
+      item_details: [
+        { id: slug ?? orderId, price: grossAmount, quantity: 1, name: productName },
+      ],
       custom_field1: uuid,
       custom_field2: username,
       custom_field3: slug ?? "",
@@ -33,21 +55,33 @@ export async function POST(req: Request) {
 
     let parameter: any = { ...base };
 
+    // ── Payment method mapping ───────────────────────────────────────────────
     if (paymentMethod === "gopay") {
       parameter.payment_type = "gopay";
-      parameter.gopay = { enable_callback: true, callback_url: `${process.env.NEXT_PUBLIC_BASE_URL}/payment/success` };
+      parameter.gopay = {
+        enable_callback: true,
+        callback_url: `${process.env.NEXT_PUBLIC_BASE_URL}/payment/success`,
+      };
     } else if (paymentMethod === "qris") {
       parameter.payment_type = "qris";
       parameter.qris = { acquirer: "gopay" };
     } else if (paymentMethod === "shopeepay") {
       parameter.payment_type = "shopeepay";
-      parameter.shopeepay = { callback_url: `${process.env.NEXT_PUBLIC_BASE_URL}/payment/success` };
+      parameter.shopeepay = {
+        callback_url: `${process.env.NEXT_PUBLIC_BASE_URL}/payment/success`,
+      };
     } else if (paymentMethod === "ovo") {
       parameter.payment_type = "e-money";
-      parameter.e_money = { payment_provider: "ovo", callback_url: `${process.env.NEXT_PUBLIC_BASE_URL}/payment/success` };
+      parameter.e_money = {
+        payment_provider: "ovo",
+        callback_url: `${process.env.NEXT_PUBLIC_BASE_URL}/payment/success`,
+      };
     } else if (paymentMethod === "dana") {
       parameter.payment_type = "e-money";
-      parameter.e_money = { payment_provider: "dana", callback_url: `${process.env.NEXT_PUBLIC_BASE_URL}/payment/success` };
+      parameter.e_money = {
+        payment_provider: "dana",
+        callback_url: `${process.env.NEXT_PUBLIC_BASE_URL}/payment/success`,
+      };
     } else if (paymentMethod === "bca") {
       parameter.payment_type = "bank_transfer";
       parameter.bank_transfer = { bank: "bca" };
@@ -77,19 +111,48 @@ export async function POST(req: Request) {
     } else if (paymentMethod === "kredivo") {
       parameter.payment_type = "kredivo";
     } else {
-      return NextResponse.json({ error: "Metode pembayaran tidak valid" }, { status: 400 });
+      return NextResponse.json(
+        { success: false, error: "Metode pembayaran tidak valid" },
+        { status: 400 }
+      );
     }
 
+    // ── Charge ke Midtrans ───────────────────────────────────────────────────
     const transaction = await coreApi.charge(parameter);
+
+    // ── Simpan transaksi ke Supabase ─────────────────────────────────────────
+    const { error: dbError } = await supabaseAdmin
+      .from("transactions")
+      .insert({
+        order_id: orderId,
+        uuid,
+        username,
+        product_name: productName,
+        slug: slug ?? "",
+        category,
+        price: grossAmount,
+        payment_method: paymentMethod,
+        status: "pending",
+        midtrans_data: transaction,
+      });
+
+    if (dbError) {
+      // Log error tapi tidak gagalkan transaksi — Midtrans sudah dicharge
+      console.error("[PAYMENT_CREATE] Supabase insert error:", dbError.message);
+    }
 
     return NextResponse.json({
       success: true,
       data: transaction,
       orderId,
       paymentMethod,
+      category,
     });
   } catch (error: any) {
-    console.error("[MIDTRANS] Core API error:", error);
-    return NextResponse.json({ error: error.message ?? "Internal server error" }, { status: 500 });
+    console.error("[PAYMENT_CREATE] Error:", error);
+    return NextResponse.json(
+      { success: false, error: error.message ?? "Internal server error" },
+      { status: 500 }
+    );
   }
 }
