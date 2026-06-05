@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { CheckCircle2, Crown, ArrowRight, Home } from "lucide-react";
@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { PageWrapper } from "@/components/page-wrapper";
 
-export default function PaymentSuccessPage() {
+function PaymentSuccessContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
 
@@ -17,7 +17,6 @@ export default function PaymentSuccessPage() {
 
   const [countdown, setCountdown] = useState(10);
 
-  // Auto redirect after countdown
   useEffect(() => {
     const timer = setInterval(() => {
       setCountdown((prev) => {
@@ -45,20 +44,17 @@ export default function PaymentSuccessPage() {
         >
           <Card className="glass border-0 text-center">
             <CardContent className="pt-10 pb-8 space-y-6">
-              {/* Icon */}
               <motion.div
                 initial={{ scale: 0 }}
                 animate={{ scale: 1 }}
                 transition={{ type: "spring", stiffness: 200, damping: 15, delay: 0.2 }}
                 className="flex justify-center"
               >
-                <div
-                  className={`w-24 h-24 rounded-full flex items-center justify-center ${
-                    isPending
-                      ? "bg-amber-500/20 border-2 border-amber-500/50"
-                      : "bg-emerald-500/20 border-2 border-emerald-500/50"
-                  }`}
-                >
+                <div className={`w-24 h-24 rounded-full flex items-center justify-center ${
+                  isPending
+                    ? "bg-amber-500/20 border-2 border-amber-500/50"
+                    : "bg-emerald-500/20 border-2 border-emerald-500/50"
+                }`}>
                   {isPending ? (
                     <Crown className="w-12 h-12 text-amber-400" />
                   ) : (
@@ -67,7 +63,6 @@ export default function PaymentSuccessPage() {
                 </div>
               </motion.div>
 
-              {/* Title */}
               <motion.div
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -79,12 +74,11 @@ export default function PaymentSuccessPage() {
                 </h1>
                 <p className="text-gray-400 text-sm">
                   {isPending
-                    ? "Pembayaran kamu sedang diproses. Rank akan diberikan setelah konfirmasi."
-                    : "Terima kasih! Rank kamu sedang diproses dan akan aktif dalam beberapa menit."}
+                    ? "Pembayaran kamu sedang diproses. Item akan diberikan setelah konfirmasi."
+                    : "Terima kasih! Item kamu sedang diproses dan akan aktif dalam beberapa menit."}
                 </p>
               </motion.div>
 
-              {/* Order ID */}
               {orderId && (
                 <motion.div
                   initial={{ opacity: 0 }}
@@ -97,7 +91,6 @@ export default function PaymentSuccessPage() {
                 </motion.div>
               )}
 
-              {/* Info box */}
               <motion.div
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -112,22 +105,21 @@ export default function PaymentSuccessPage() {
                   <>
                     <p className="text-amber-300 font-medium">⏳ Pembayaran Pending</p>
                     <p className="text-gray-400">
-                      Selesaikan pembayaranmu via bank transfer atau metode lain yang dipilih. 
-                      Rank akan otomatis aktif setelah konfirmasi.
+                      Selesaikan pembayaranmu via bank transfer atau metode lain yang dipilih.
+                      Item akan otomatis aktif setelah konfirmasi.
                     </p>
                   </>
                 ) : (
                   <>
-                    <p className="text-emerald-300 font-medium">🎮 Rank Aktif Otomatis</p>
+                    <p className="text-emerald-300 font-medium">🎮 Item Aktif Otomatis</p>
                     <p className="text-gray-400">
-                      Rank kamu akan diberikan secara otomatis dalam 1-5 menit. 
-                      Login ke server dan cek permission kamu!
+                      Item kamu akan diberikan secara otomatis dalam 1-5 menit.
+                      Login ke server dan cek!
                     </p>
                   </>
                 )}
               </motion.div>
 
-              {/* Buttons */}
               <motion.div
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -152,7 +144,6 @@ export default function PaymentSuccessPage() {
                 </Button>
               </motion.div>
 
-              {/* Countdown */}
               <motion.p
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
@@ -186,5 +177,17 @@ function ShoppingCartIcon() {
       <circle cx="19" cy="21" r="1" />
       <path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12" />
     </svg>
+  );
+}
+
+export default function PaymentSuccessPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-emerald-400 text-sm">Loading...</div>
+      </div>
+    }>
+      <PaymentSuccessContent />
+    </Suspense>
   );
 }

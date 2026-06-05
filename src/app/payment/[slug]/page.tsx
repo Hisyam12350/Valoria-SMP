@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { PageWrapper } from "@/components/page-wrapper";
+import { Turnstile } from "@marsidev/react-turnstile";
 
 type ProductType = "rank" | "money" | "points" | "skill";
 
@@ -170,6 +171,9 @@ export default function PaymentPage() {
   );
 
   const leftRef = useRef<HTMLDivElement>(null);
+
+  const [turnstileToken, setTurnstileToken] = useState("");
+  const [isVerified, setIsVerified] = useState(false);
 
   useEffect(() => {
     fetchProduct();
@@ -500,13 +504,13 @@ export default function PaymentPage() {
               "Cek app e-wallet kamu untuk menyelesaikan pembayaran.",
           });
       } else if (selectedMethod === "qris") {
-        const qrString = tx.qr_string;
-        const orderId = data.orderId;
-        if (qrString) {
+        const qr = tx.actions?.find(
+          (a: any) => a.name === "generate-qr-code",
+        )?.url;
+        if (qr)
           router.push(
-            `/payment/instruction?orderId=${orderId}&method=qris&qrString=${encodeURIComponent(qrString)}`,
+            `/payment/instruction?orderId=${data.orderId}&method=qris&qrUrl=${encodeURIComponent(qr)}`,
           );
-        }
       } else if (["indomaret", "alfamart"].includes(selectedMethod)) {
         router.push(
           `/payment/instruction?orderId=${data.orderId}&method=${selectedMethod}&paymentCode=${tx.payment_code}`,
@@ -584,7 +588,7 @@ export default function PaymentPage() {
     product.discount ?? 0,
   );
   const finalPrice = voucherFinalPrice ?? basePrice;
-  const canPay = isPlayerFound && !!selectedMethod && !isLoading;
+  const canPay = isPlayerFound && !!selectedMethod && !isLoading && isVerified;
 
   return (
     <PageWrapper>
@@ -1101,6 +1105,24 @@ export default function PaymentPage() {
                       {formatRupiah(finalPrice)}
                     </span>
                   </div>
+                </div>
+
+                {/* Cloudflare Turnstile */}
+                <div className="rpg-divider">
+                  <span>Verifikasi</span>
+                </div>
+                <div style={{ display: "flex", justifyContent: "center" }}>
+                  <Turnstile
+                    siteKey={process.env.NEXT_PUBLIC_CF_TURNSTILE_SITE_KEY!}
+                    onSuccess={(token) => {
+                      setTurnstileToken(token);
+                      setIsVerified(true);
+                    }}
+                    onExpire={() => {
+                      setTurnstileToken("");
+                      setIsVerified(false);
+                    }}
+                  />
                 </div>
 
                 <button
