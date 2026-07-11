@@ -6,7 +6,7 @@ import { Copy, Check, MessageCircle, Share2, Gamepad2 as Gamepad2Icon, Shield, Z
 import { Button } from '@/components/ui/button';
 import { toast } from '@/hooks/use-toast';
 import { PageWrapper } from '@/components/page-wrapper';
-import { SERVER_IP, BEDROCK_PORT, DISCORD_LINK, WHATSAPP_GROUP, SERVER_LOGO, SERVER_FEATURES } from '@/lib/constants';
+import { SERVER_IP, BEDROCK_PORT, DISCORD_LINK, SERVER_LOGO, SERVER_FEATURES } from '@/lib/constants';
 import { useSiteContent } from '@/lib/use-site-content';
 
 interface ServerStatus { online: boolean; players: { online: number; max: number }; version: string; hostname: string; }
@@ -24,7 +24,7 @@ export default function HomePage() {
   const { value: rawServerIp } = useSiteContent<unknown>('server_ip', SERVER_IP);
   const { value: rawBedrockPort } = useSiteContent<unknown>('bedrock_port', BEDROCK_PORT);
   const { value: rawDiscordLink } = useSiteContent<unknown>('discord_link', DISCORD_LINK);
-  const { value: rawWaGroup } = useSiteContent<unknown>('whatsapp_group', WHATSAPP_GROUP);
+  const { value: rawWaGroup } = useSiteContent<unknown>('whatsapp_group', '');
   const { value: rawServerLogo } = useSiteContent<unknown>('server_logo', SERVER_LOGO);
   const { value: rawFeatures } = useSiteContent<unknown>('server_features', SERVER_FEATURES);
 
