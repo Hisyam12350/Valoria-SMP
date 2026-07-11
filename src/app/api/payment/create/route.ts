@@ -17,16 +17,63 @@ function getCategoryFromSlug(slug: string): string {
   return "rank";
 }
 
+// ── Verifikasi Cloudflare Turnstile ──────────────────────────────────────────
+async function verifyTurnstile(token: string, ip: string): Promise<boolean> {
+  const res = await fetch(
+    "https://challenges.cloudflare.com/turnstile/v0/siteverify",
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        secret: process.env.CF_TURNSTILE_SECRET_KEY,
+        response: token,
+        remoteip: ip,
+      }),
+    }
+  );
+  const data = await res.json();
+  return data.success === true;
+}
+
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const { uuid, username, productName, slug, price, paymentMethod } = body;
+    const {
+      uuid,
+      username,
+      productName,
+      slug,
+      price,
+      paymentMethod,
+      turnstileToken,
+    } = body;
 
     // ── Validasi input ───────────────────────────────────────────────────────
     if (!uuid || !username || !productName || !price || !paymentMethod) {
       return NextResponse.json(
         { success: false, error: "Data tidak lengkap" },
         { status: 400 }
+      );
+    }
+
+    // ── Verifikasi Turnstile ─────────────────────────────────────────────────
+    if (!turnstileToken) {
+      return NextResponse.json(
+        { success: false, error: "Verifikasi keamanan diperlukan" },
+        { status: 400 }
+      );
+    }
+
+    const ip =
+      req.headers.get("cf-connecting-ip") ||
+      req.headers.get("x-forwarded-for") ||
+      "127.0.0.1";
+
+    const isTurnstileValid = await verifyTurnstile(turnstileToken, ip);
+    if (!isTurnstileValid) {
+      return NextResponse.json(
+        { success: false, error: "Verifikasi keamanan gagal, silakan refresh halaman" },
+        { status: 403 }
       );
     }
 
@@ -137,7 +184,6 @@ export async function POST(req: Request) {
       });
 
     if (dbError) {
-      // Log error tapi tidak gagalkan transaksi — Midtrans sudah dicharge
       console.error("[PAYMENT_CREATE] Supabase insert error:", dbError.message);
     }
 

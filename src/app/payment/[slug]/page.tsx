@@ -473,6 +473,7 @@ export default function PaymentPage() {
           price: finalPrice,
           paymentMethod: selectedMethod,
           voucherCode: voucherApplied ? voucherCode : undefined,
+          turnstileToken,
         }),
       });
 
@@ -1148,7 +1149,7 @@ export default function PaymentPage() {
             </div>
 
             <button
-              onClick={() => router.push("/store")}
+              onClick={() => router.back()}
               className="rpg-back-btn"
             >
               ← Kembali ke Store
