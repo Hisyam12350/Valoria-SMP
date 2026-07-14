@@ -27,6 +27,9 @@ declare global {
 
 const CF_SITE_KEY =
   process.env.NEXT_PUBLIC_CF_TURNSTILE_SITE_KEY || "0x4AAAAAADBQccjz_Dzel_jp";
+const CAPTCHA_ENABLED =
+  process.env.NODE_ENV === "production" &&
+  Boolean(process.env.NEXT_PUBLIC_CF_TURNSTILE_SITE_KEY);
 
 export default function AdminLoginPage() {
   const router = useRouter();
@@ -39,12 +42,17 @@ export default function AdminLoginPage() {
     null,
   );
   const [captchaToken, setCaptchaToken] = useState("");
-  const [captchaReady, setCaptchaReady] = useState(false);
+  const [captchaReady, setCaptchaReady] = useState(!CAPTCHA_ENABLED);
   const captchaRef = useRef<HTMLDivElement>(null);
   const widgetIdRef = useRef<string>("");
 
   // Render CAPTCHA widget when ready
   useEffect(() => {
+    if (!CAPTCHA_ENABLED) {
+      setCaptchaToken("dev-bypass");
+      return;
+    }
+
     const timer = setInterval(() => {
       if (
         captchaRef.current &&
@@ -92,7 +100,7 @@ export default function AdminLoginPage() {
       return;
     }
 
-    if (!captchaToken) {
+    if (CAPTCHA_ENABLED && !captchaToken) {
       setError("Selesaikan verifikasi CAPTCHA terlebih dahulu.");
       return;
     }
@@ -303,21 +311,30 @@ export default function AdminLoginPage() {
                 <label className="block text-xs text-gray-400 mb-1.5 font-medium uppercase tracking-wider">
                   Verifikasi Keamanan
                 </label>
-                <div className="flex justify-center">
-                  <div ref={captchaRef} />
-                </div>
-                {!captchaReady && (
-                  <div className="flex items-center justify-center gap-2 py-3 text-gray-500 text-xs">
-                    <Loader2 className="w-3 h-3 animate-spin" />
-                    Memuat CAPTCHA...
+                {!CAPTCHA_ENABLED ? (
+                  <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-300">
+                    CAPTCHA dinonaktifkan di lingkungan lokal, sehingga login
+                    bisa dilanjutkan tanpa verifikasi tambahan.
                   </div>
+                ) : (
+                  <>
+                    <div className="flex justify-center">
+                      <div ref={captchaRef} />
+                    </div>
+                    {!captchaReady && (
+                      <div className="flex items-center justify-center gap-2 py-3 text-gray-500 text-xs">
+                        <Loader2 className="w-3 h-3 animate-spin" />
+                        Memuat CAPTCHA...
+                      </div>
+                    )}
+                  </>
                 )}
               </div>
 
               {/* Submit */}
               <button
                 type="submit"
-                disabled={loading || !captchaToken}
+                disabled={loading || (CAPTCHA_ENABLED && !captchaToken)}
                 className="w-full py-3 rounded-xl font-semibold text-sm text-white transition-all duration-200 mt-2 disabled:opacity-40 disabled:cursor-not-allowed relative overflow-hidden"
                 style={{
                   background: "linear-gradient(135deg, #10b981, #059669)",
@@ -346,10 +363,11 @@ export default function AdminLoginPage() {
 
         {/* Back to site */}
         <div className="text-center mt-4">
-          <Link href="/">
-            <a className="text-xs text-gray-600 hover:text-gray-400 transition-colors">
-              ← Kembali ke Website
-            </a>
+          <Link
+            href="/"
+            className="text-xs text-gray-600 hover:text-gray-400 transition-colors"
+          >
+            ← Kembali ke Website
           </Link>
         </div>
       </motion.div>

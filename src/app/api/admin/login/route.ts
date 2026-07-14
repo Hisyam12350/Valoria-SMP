@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
-import { supabaseAdmin } from "@/lib/supabase";
+import { supabaseAdmin, isSupabaseConfigured } from "@/lib/supabase";
 import {
   checkRateLimit,
   recordLoginAttempt,
@@ -49,9 +49,11 @@ export async function POST(req: NextRequest) {
     }
 
     const { username, password, captchaToken } = body;
+    const normalizedUsername =
+      typeof username === "string" ? username.trim().toLowerCase() : "";
 
     if (
-      !username ||
+      !normalizedUsername ||
       typeof username !== "string" ||
       !password ||
       typeof password !== "string"
@@ -62,7 +64,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    if (username.length > 50 || password.length > 256) {
+    if (normalizedUsername.length > 50 || password.length > 256) {
       return NextResponse.json(
         { error: "Input tidak valid." },
         { status: 400 },
@@ -74,27 +76,50 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: rateCheck.reason }, { status: 429 });
     }
 
-    if (!captchaToken || typeof captchaToken !== "string") {
+    const captchaRequired =
+      process.env.NODE_ENV === "production" && Boolean(CF_TURNSTILE_SECRET);
+
+    if (captchaRequired) {
+      if (!captchaToken || typeof captchaToken !== "string") {
+        return NextResponse.json(
+          { error: "Verifikasi CAPTCHA diperlukan." },
+          { status: 400 },
+        );
+      }
+
+      const captchaOk = await verifyCaptcha(captchaToken, ip);
+      if (!captchaOk) {
+        await recordLoginAttempt(ip, normalizedUsername, false);
+        return NextResponse.json(
+          { error: "Verifikasi CAPTCHA gagal. Coba lagi." },
+          { status: 400 },
+        );
+      }
+    }
+
+    if (!isSupabaseConfigured) {
       return NextResponse.json(
-        { error: "Verifikasi CAPTCHA diperlukan." },
-        { status: 400 },
+        {
+          error:
+            "Konfigurasi Supabase belum lengkap. Isi NEXT_PUBLIC_SUPABASE_URL dan SUPABASE_SERVICE_ROLE_KEY terlebih dahulu.",
+        },
+        { status: 503 },
       );
     }
 
-    const captchaOk = await verifyCaptcha(captchaToken, ip);
-    if (!captchaOk) {
-      await recordLoginAttempt(ip, username, false);
-      return NextResponse.json(
-        { error: "Verifikasi CAPTCHA gagal. Coba lagi." },
-        { status: 400 },
-      );
-    }
-
-    const { data: admin } = await supabaseAdmin
+    const { data: admin, error: adminError } = await supabaseAdmin
       .from("admin_users")
       .select("id, username, email, role, password_hash, is_active")
-      .eq("username", username.trim())
+      .eq("username", normalizedUsername)
       .maybeSingle();
+
+    if (adminError) {
+      console.error("[Admin Login DB Error]", adminError);
+      return NextResponse.json(
+        { error: "Gagal menghubungi database admin. Coba lagi nanti." },
+        { status: 503 },
+      );
+    }
 
     const dummyHash =
       "$2b$12$dummyhashforpreventtimingattacksonusernameenumeration00";
@@ -102,7 +127,7 @@ export async function POST(req: NextRequest) {
     const hashToCompare = admin?.password_hash ?? dummyHash;
 
     console.log("=== LOGIN DEBUG ===");
-    console.log("Username input:", username);
+    console.log("Username input:", normalizedUsername);
     console.log("Password input:", password);
     console.log("Admin ditemukan:", admin);
     console.log("Hash DB:", admin?.password_hash);
@@ -125,7 +150,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    await recordLoginAttempt(ip, username, true);
+    await recordLoginAttempt(ip, normalizedUsername, true);
     const token = await createSession(
       admin.id,
       ip,
