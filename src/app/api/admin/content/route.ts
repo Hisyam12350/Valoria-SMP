@@ -30,6 +30,8 @@ const ALLOWED_KEYS = new Set([
   "whatsapp_number",
   "ranks",
   "store_skills",
+  "points_store",
+  "money",
 ]);
 
 function normalizeContentValue(value: unknown): unknown {

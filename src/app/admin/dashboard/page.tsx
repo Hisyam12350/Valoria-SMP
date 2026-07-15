@@ -33,6 +33,9 @@ import {
   Bell,
   Trophy,
   Image,
+  Tag,
+  User,
+  Coins,
 } from "lucide-react";
 import { notify, setGlobalToast } from "@/lib/notify";
 // ─────────────────────────────────────────────────────────────────────────────
@@ -57,9 +60,13 @@ type Section =
   | "tutorial"
   | "achievements"
   | "ranks"
+  | "points"
+  | "money"
   | "store-settings"
   | "manage-admins"
-  | "activity";
+  | "activity"
+  | "discounts"
+  | "players";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Main Dashboard Component
@@ -127,6 +134,10 @@ export default function AdminDashboard() {
     { id: "tutorial", label: "Tutorial", icon: Play },
     { id: "achievements", label: "Achievements", icon: Trophy },
     { id: "ranks", label: "Ranks", icon: Crown },
+    { id: "points", label: "Points", icon: Star },
+    { id: "money", label: "Money", icon: Coins },
+    { id: "discounts", label: "Diskon", icon: Tag },
+    { id: "players", label: "Pemain", icon: User },
     { id: "store-settings", label: "Store Settings", icon: Settings },
     {
       id: "manage-admins",
@@ -305,9 +316,15 @@ export default function AdminDashboard() {
                 <AchievementsSection admin={admin} />
               )}
               {activeSection === "ranks" && <RanksSection admin={admin} />}
+              {activeSection === "points" && <PointsSection admin={admin} />}
+              {activeSection === "money" && <MoneySection admin={admin} />}
               {activeSection === "store-settings" && (
                 <StoreSettingsSection admin={admin} />
               )}
+              {activeSection === "discounts" && (
+                <DiscountsSection admin={admin} />
+              )}
+              {activeSection === "players" && <PlayersSection admin={admin} />}
             </motion.div>
           </AnimatePresence>
         </main>
@@ -3267,12 +3284,29 @@ function RanksSection({ admin }: { admin: AdminUser }) {
                 ) : (
                   <div>
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className={`font-bold text-sm ${rank.color}`}>{rank.name}</span>
-                      {rank.discount > 0 && <span className="text-xs px-1.5 py-0.5 rounded bg-red-500/20 text-red-400">-{rank.discount}%</span>}
-                      {!!(rank as Record<string,unknown>).popular && <span className="text-xs px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-400">Popular</span>}
-                      {!!(rank as Record<string,unknown>).top && <span className="text-xs px-1.5 py-0.5 rounded bg-yellow-500/20 text-yellow-400">Top</span>}
-                      {!!(rank as Record<string,unknown>).ultimate && <span className="text-xs px-1.5 py-0.5 rounded bg-cyan-500/20 text-cyan-400">Ultimate</span>}
-
+                      <span className={`font-bold text-sm ${rank.color}`}>
+                        {rank.name}
+                      </span>
+                      {rank.discount > 0 && (
+                        <span className="text-xs px-1.5 py-0.5 rounded bg-red-500/20 text-red-400">
+                          -{rank.discount}%
+                        </span>
+                      )}
+                      {!!(rank as Record<string, unknown>).popular && (
+                        <span className="text-xs px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-400">
+                          Popular
+                        </span>
+                      )}
+                      {!!(rank as Record<string, unknown>).top && (
+                        <span className="text-xs px-1.5 py-0.5 rounded bg-yellow-500/20 text-yellow-400">
+                          Top
+                        </span>
+                      )}
+                      {!!(rank as Record<string, unknown>).ultimate && (
+                        <span className="text-xs px-1.5 py-0.5 rounded bg-cyan-500/20 text-cyan-400">
+                          Ultimate
+                        </span>
+                      )}
                     </div>
                     <p className="text-gray-400 text-xs mt-0.5">
                       {rank.discount > 0 ? (
@@ -3451,6 +3485,1136 @@ function StoreSettingsSection({ admin }: { admin: AdminUser }) {
           <SaveButton loading={saving} onClick={save} />
         </div>
       </Card>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Discounts Section
+// ─────────────────────────────────────────────────────────────────────────────
+type Discount = {
+  id: string;
+  kode: string;
+  discount_type: "percent" | "fixed";
+  discount_value: number;
+  max_uses: number;
+  used_count: number;
+  expired_at: string | null;
+  is_active: boolean;
+  created_at: string;
+};
+
+function DiscountsSection({ admin }: { admin: AdminUser }) {
+  const [discounts, setDiscounts] = useState<Discount[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showForm, setShowForm] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [form, setForm] = useState({
+    kode: "",
+    discount_type: "percent" as const,
+    discount_value: 0,
+    max_uses: 0,
+    expired_at: "",
+    is_active: true,
+  });
+
+  const fetchDiscounts = useCallback(() => {
+    setLoading(true);
+    fetch("/api/admin/discounts", { credentials: "include" })
+      .then((r) => r.json())
+      .then((d) => setDiscounts(d.data ?? []))
+      .finally(() => setLoading(false));
+  }, []);
+
+  useEffect(() => {
+    fetchDiscounts();
+  }, [fetchDiscounts]);
+
+  const handleSubmit = async () => {
+    if (!form.kode || !form.discount_value) {
+      notify("Kode dan nilai diskon wajib diisi.", "error");
+      return;
+    }
+
+    try {
+      const method = editingId ? "PUT" : "POST";
+      const body = editingId ? { id: editingId, ...form } : form;
+
+      const res = await fetch("/api/admin/discounts", {
+        credentials: "include",
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+
+      if (!res.ok) throw new Error("Gagal menyimpan diskon.");
+
+      notify("Diskon berhasil disimpan!", "success");
+      setForm({
+        kode: "",
+        discount_type: "percent",
+        discount_value: 0,
+        max_uses: 0,
+        expired_at: "",
+        is_active: true,
+      });
+      setShowForm(false);
+      setEditingId(null);
+      fetchDiscounts();
+    } catch {
+      notify("Gagal menyimpan diskon.", "error");
+    }
+  };
+
+  const handleEdit = (discount: Discount) => {
+    setEditingId(discount.id);
+    setForm({
+      kode: discount.kode,
+      discount_type: discount.discount_type,
+      discount_value: discount.discount_value,
+      max_uses: discount.max_uses,
+      expired_at: discount.expired_at ? discount.expired_at.split("T")[0] : "",
+      is_active: discount.is_active,
+    });
+    setShowForm(true);
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!confirm("Yakin ingin menghapus diskon ini?")) return;
+    try {
+      await fetch(`/api/admin/discounts?id=${id}`, {
+        credentials: "include",
+        method: "DELETE",
+      });
+      notify("Diskon berhasil dihapus!", "success");
+      fetchDiscounts();
+    } catch {
+      notify("Gagal menghapus diskon.", "error");
+    }
+  };
+
+  if (loading)
+    return (
+      <div className="flex items-center gap-2 text-gray-400">
+        <Loader2 className="w-4 h-4 animate-spin" /> Memuat data...
+      </div>
+    );
+
+  return (
+    <div>
+      <SectionHeader title="Diskon" subtitle="Kelola kode diskon untuk store" />
+      <div className="flex gap-3 mb-4">
+        <button
+          onClick={() => {
+            if (showForm) {
+              setShowForm(false);
+              setEditingId(null);
+              setForm({
+                kode: "",
+                discount_type: "percent",
+                discount_value: 0,
+                max_uses: 0,
+                expired_at: "",
+                is_active: true,
+              });
+            } else {
+              setShowForm(true);
+            }
+          }}
+          className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-white"
+          style={{
+            background: "rgba(16,185,129,0.15)",
+            border: "1px solid rgba(16,185,129,0.3)",
+          }}
+        >
+          {showForm ? <X className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
+          {showForm ? "Batal" : "Tambah Diskon"}
+        </button>
+        <button
+          onClick={fetchDiscounts}
+          className="p-2 rounded-lg text-gray-400 hover:text-white hover:bg-white/5"
+        >
+          <RefreshCw className="w-4 h-4" />
+        </button>
+      </div>
+
+      <AnimatePresence>
+        {showForm && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            className="overflow-hidden mb-4"
+          >
+            <Card>
+              <h3 className="text-white font-medium mb-4">
+                {editingId ? "Edit Diskon" : "Buat Diskon Baru"}
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="text-xs text-gray-400 block mb-1">
+                    Kode Diskon
+                  </label>
+                  <input
+                    value={form.kode}
+                    onChange={(e) =>
+                      setForm((p) => ({
+                        ...p,
+                        kode: e.target.value.toUpperCase(),
+                      }))
+                    }
+                    placeholder="DISKON10"
+                    className="w-full px-3 py-2 rounded-lg text-sm text-white outline-none"
+                    style={{
+                      background: "rgba(255,255,255,0.05)",
+                      border: "1px solid rgba(255,255,255,0.1)",
+                    }}
+                  />
+                </div>
+                <div>
+                  <label className="text-xs text-gray-400 block mb-1">
+                    Tipe Diskon
+                  </label>
+                  <select
+                    value={form.discount_type}
+                    onChange={(e) =>
+                      setForm((p) => ({
+                        ...p,
+                        discount_type: e.target.value as "percent" | "fixed",
+                      }))
+                    }
+                    className="w-full px-3 py-2 rounded-lg text-sm text-white outline-none"
+                    style={{
+                      background: "rgba(20,25,40,0.9)",
+                      border: "1px solid rgba(255,255,255,0.1)",
+                    }}
+                  >
+                    <option value="percent">Persentase (%)</option>
+                    <option value="fixed">Tetap (IDR)</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="text-xs text-gray-400 block mb-1">
+                    Nilai Diskon
+                  </label>
+                  <input
+                    type="number"
+                    value={form.discount_value}
+                    onChange={(e) =>
+                      setForm((p) => ({
+                        ...p,
+                        discount_value: parseInt(e.target.value) || 0,
+                      }))
+                    }
+                    className="w-full px-3 py-2 rounded-lg text-sm text-white outline-none"
+                    style={{
+                      background: "rgba(255,255,255,0.05)",
+                      border: "1px solid rgba(255,255,255,0.1)",
+                    }}
+                  />
+                </div>
+                <div>
+                  <label className="text-xs text-gray-400 block mb-1">
+                    Max Penggunaan (0 = tidak terbatas)
+                  </label>
+                  <input
+                    type="number"
+                    value={form.max_uses}
+                    onChange={(e) =>
+                      setForm((p) => ({
+                        ...p,
+                        max_uses: parseInt(e.target.value) || 0,
+                      }))
+                    }
+                    className="w-full px-3 py-2 rounded-lg text-sm text-white outline-none"
+                    style={{
+                      background: "rgba(255,255,255,0.05)",
+                      border: "1px solid rgba(255,255,255,0.1)",
+                    }}
+                  />
+                </div>
+                <div>
+                  <label className="text-xs text-gray-400 block mb-1">
+                    Kadaluarsa (opsional)
+                  </label>
+                  <input
+                    type="date"
+                    value={form.expired_at}
+                    onChange={(e) =>
+                      setForm((p) => ({ ...p, expired_at: e.target.value }))
+                    }
+                    className="w-full px-3 py-2 rounded-lg text-sm text-white outline-none"
+                    style={{
+                      background: "rgba(255,255,255,0.05)",
+                      border: "1px solid rgba(255,255,255,0.1)",
+                    }}
+                  />
+                </div>
+                <div className="flex items-end">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={form.is_active}
+                      onChange={(e) =>
+                        setForm((p) => ({ ...p, is_active: e.target.checked }))
+                      }
+                      className="w-4 h-4"
+                    />
+                    <span className="text-sm text-gray-300">Aktif</span>
+                  </label>
+                </div>
+              </div>
+              <div className="mt-4">
+                <SaveButton loading={false} onClick={handleSubmit} />
+              </div>
+            </Card>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <div className="space-y-3">
+        {discounts.map((discount) => (
+          <Card key={discount.id}>
+            <div className="flex items-start justify-between gap-4">
+              <div className="flex-1">
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="text-lg font-bold text-white">
+                    {discount.kode}
+                  </span>
+                  <span
+                    className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                      discount.is_active
+                        ? "bg-emerald-500/10 text-emerald-400"
+                        : "bg-red-500/10 text-red-400"
+                    }`}
+                  >
+                    {discount.is_active ? "Aktif" : "Nonaktif"}
+                  </span>
+                </div>
+                <p className="text-sm text-gray-400">
+                  {discount.discount_type === "percent"
+                    ? `${discount.discount_value}%`
+                    : `Rp ${discount.discount_value.toLocaleString()}`}
+                </p>
+                <p className="text-xs text-gray-500 mt-1">
+                  Digunakan: {discount.used_count}
+                  {discount.max_uses > 0 ? ` / ${discount.max_uses}` : ""}
+                  {discount.expired_at && (
+                    <>
+                      {" • "}
+                      Kadaluarsa:{" "}
+                      {new Date(discount.expired_at).toLocaleDateString(
+                        "id-ID",
+                      )}
+                    </>
+                  )}
+                </p>
+              </div>
+              <div className="flex gap-2 flex-shrink-0">
+                <button
+                  onClick={() => handleEdit(discount)}
+                  className="p-2 rounded-lg text-gray-400 hover:text-white hover:bg-white/5 transition-all"
+                >
+                  <Edit3 className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={() => handleDelete(discount.id)}
+                  className="p-2 rounded-lg text-gray-400 hover:text-red-400 hover:bg-red-500/10 transition-all"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          </Card>
+        ))}
+        {discounts.length === 0 && (
+          <Card>
+            <p className="text-center text-gray-400 py-8">
+              Belum ada diskon yang dibuat.
+            </p>
+          </Card>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Players Section
+// ─────────────────────────────────────────────────────────────────────────────
+type Player = {
+  id: string;
+  username: string;
+  rank: string;
+  points: number;
+  money: number;
+  created_at: string;
+};
+
+function PlayersSection({ admin }: { admin: AdminUser }) {
+  const [players, setPlayers] = useState<Player[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [searchUsername, setSearchUsername] = useState("");
+  const [editingPlayer, setEditingPlayer] = useState<Player | null>(null);
+  const [editForm, setEditForm] = useState({
+    username: "",
+    rank: "",
+    points: 0,
+    money: 0,
+  });
+
+  const fetchPlayers = useCallback((username?: string) => {
+    setLoading(true);
+    const url = username
+      ? `/api/admin/players?username=${encodeURIComponent(username)}`
+      : "/api/admin/players";
+    fetch(url, { credentials: "include" })
+      .then((r) => r.json())
+      .then((d) => {
+        if (d.data) {
+          setPlayers(Array.isArray(d.data) ? d.data : [d.data]);
+        } else {
+          setPlayers([]);
+        }
+      })
+      .finally(() => setLoading(false));
+  }, []);
+
+  useEffect(() => {
+    fetchPlayers();
+  }, [fetchPlayers]);
+
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    fetchPlayers(searchUsername.trim());
+  };
+
+  const handleEdit = (player: Player) => {
+    setEditingPlayer(player);
+    setEditForm({
+      username: player.username,
+      rank: player.rank,
+      points: player.points,
+      money: player.money,
+    });
+  };
+
+  const handleSaveEdit = async () => {
+    try {
+      const res = await fetch("/api/admin/players", {
+        credentials: "include",
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(editForm),
+      });
+
+      if (!res.ok) throw new Error("Gagal menyimpan perubahan.");
+
+      notify("Data pemain berhasil diperbarui!", "success");
+      setEditingPlayer(null);
+      fetchPlayers(searchUsername.trim());
+    } catch {
+      notify("Gagal menyimpan perubahan.", "error");
+    }
+  };
+
+  if (loading)
+    return (
+      <div className="flex items-center gap-2 text-gray-400">
+        <Loader2 className="w-4 h-4 animate-spin" /> Memuat data...
+      </div>
+    );
+
+  return (
+    <div>
+      <SectionHeader
+        title="Pemain"
+        subtitle="Kelola rank, points, dan money pemain"
+      />
+      <div className="flex gap-3 mb-4">
+        <form onSubmit={handleSearch} className="flex flex-1 gap-2">
+          <input
+            value={searchUsername}
+            onChange={(e) => setSearchUsername(e.target.value)}
+            placeholder="Cari pemain berdasarkan username..."
+            className="flex-1 px-4 py-2 rounded-lg text-sm text-white outline-none"
+            style={{
+              background: "rgba(255,255,255,0.05)",
+              border: "1px solid rgba(255,255,255,0.1)",
+            }}
+          />
+          <button
+            type="submit"
+            className="px-4 py-2 rounded-lg text-sm font-medium text-white"
+            style={{
+              background: "rgba(16,185,129,0.15)",
+              border: "1px solid rgba(16,185,129,0.3)",
+            }}
+          >
+            Cari
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setSearchUsername("");
+              fetchPlayers();
+            }}
+            className="px-4 py-2 rounded-lg text-sm text-gray-400 hover:text-white hover:bg-white/5"
+          >
+            Reset
+          </button>
+        </form>
+      </div>
+
+      <AnimatePresence>
+        {editingPlayer && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            className="overflow-hidden mb-4"
+          >
+            <Card>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-white font-medium">
+                  Edit Pemain: {editingPlayer.username}
+                </h3>
+                <button
+                  onClick={() => setEditingPlayer(null)}
+                  className="p-1 rounded text-gray-400 hover:text-white"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="text-xs text-gray-400 block mb-1">
+                    Rank
+                  </label>
+                  <input
+                    value={editForm.rank}
+                    onChange={(e) =>
+                      setEditForm((p) => ({ ...p, rank: e.target.value }))
+                    }
+                    className="w-full px-3 py-2 rounded-lg text-sm text-white outline-none"
+                    style={{
+                      background: "rgba(255,255,255,0.05)",
+                      border: "1px solid rgba(255,255,255,0.1)",
+                    }}
+                  />
+                </div>
+                <div>
+                  <label className="text-xs text-gray-400 block mb-1">
+                    Points
+                  </label>
+                  <input
+                    type="number"
+                    value={editForm.points}
+                    onChange={(e) =>
+                      setEditForm((p) => ({
+                        ...p,
+                        points: parseInt(e.target.value) || 0,
+                      }))
+                    }
+                    className="w-full px-3 py-2 rounded-lg text-sm text-white outline-none"
+                    style={{
+                      background: "rgba(255,255,255,0.05)",
+                      border: "1px solid rgba(255,255,255,0.1)",
+                    }}
+                  />
+                </div>
+                <div>
+                  <label className="text-xs text-gray-400 block mb-1">
+                    Money (IDR)
+                  </label>
+                  <input
+                    type="number"
+                    value={editForm.money}
+                    onChange={(e) =>
+                      setEditForm((p) => ({
+                        ...p,
+                        money: parseInt(e.target.value) || 0,
+                      }))
+                    }
+                    className="w-full px-3 py-2 rounded-lg text-sm text-white outline-none"
+                    style={{
+                      background: "rgba(255,255,255,0.05)",
+                      border: "1px solid rgba(255,255,255,0.1)",
+                    }}
+                  />
+                </div>
+              </div>
+              <div className="mt-4">
+                <SaveButton loading={false} onClick={handleSaveEdit} />
+              </div>
+            </Card>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <div className="space-y-3">
+        {players.map((player) => (
+          <Card key={player.id}>
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex-1">
+                <h4 className="text-white font-medium">{player.username}</h4>
+                <div className="flex flex-wrap gap-4 mt-1 text-sm text-gray-400">
+                  <span className="flex items-center gap-1">
+                    <Crown className="w-3.5 h-3.5 text-amber-400" />
+                    {player.rank}
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <Star className="w-3.5 h-3.5 text-blue-400" />
+                    {player.points.toLocaleString()} Points
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <Coins className="w-3.5 h-3.5 text-yellow-400" />
+                    Rp {player.money.toLocaleString()}
+                  </span>
+                </div>
+              </div>
+              <button
+                onClick={() => handleEdit(player)}
+                className="p-2 rounded-lg text-gray-400 hover:text-white hover:bg-white/5 transition-all"
+              >
+                <Edit3 className="w-4 h-4" />
+              </button>
+            </div>
+          </Card>
+        ))}
+        {players.length === 0 && (
+          <Card>
+            <p className="text-center text-gray-400 py-8">
+              {searchUsername
+                ? "Pemain tidak ditemukan."
+                : "Belum ada data pemain."}
+            </p>
+          </Card>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Points Section
+// ─────────────────────────────────────────────────────────────────────────────
+type PointsItem = {
+  rank: string;
+  slug: string;
+  color: string;
+  harga: number;
+  points: string;
+  gradient: string;
+};
+
+function PointsSection({ admin }: { admin: AdminUser }) {
+  const [items, setItems] = useState<PointsItem[]>([]);
+  const [saving, setSaving] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [editIdx, setEditIdx] = useState<number | null>(null);
+
+  const DEFAULT_POINTS_ITEM: PointsItem = {
+    rank: "Member",
+    slug: "member-points",
+    color: "text-emerald-400",
+    harga: 5000,
+    points: "2,500",
+    gradient: "from-emerald-500 to-teal-500",
+  };
+
+  useEffect(() => {
+    fetch("/api/admin/content?key=points_store", { credentials: "include" })
+      .then((r) => r.json())
+      .then(({ data }) => {
+        if (data?.content_value && Array.isArray(data.content_value)) {
+          setItems(data.content_value);
+        } else {
+          // Load default from sample data if no data in DB
+          setItems([
+            {
+              rank: "Member",
+              slug: "member-points",
+              color: "text-emerald-400",
+              harga: 5000,
+              points: "2,500",
+              gradient: "from-emerald-500 to-teal-500",
+            },
+            {
+              rank: "VIP",
+              slug: "vip-points",
+              color: "text-blue-400",
+              harga: 10000,
+              points: "6,000",
+              gradient: "from-blue-500 to-indigo-500",
+            },
+            {
+              rank: "MVP",
+              slug: "mvp-points",
+              color: "text-purple-400",
+              harga: 25000,
+              points: "15,000",
+              gradient: "from-purple-500 to-violet-500",
+            },
+          ]);
+        }
+      })
+      .finally(() => setLoading(false));
+  }, []);
+
+  const addItem = () => {
+    setItems((p) => [...p, { ...DEFAULT_POINTS_ITEM }]);
+    setEditIdx(items.length);
+  };
+
+  const removeItem = (idx: number) => {
+    setItems((p) => p.filter((_, i) => i !== idx));
+    if (editIdx === idx) setEditIdx(null);
+  };
+
+  const update = (idx: number, field: keyof PointsItem, value: unknown) =>
+    setItems((p) =>
+      p.map((item, i) => (i === idx ? { ...item, [field]: value } : item)),
+    );
+
+  const save = async () => {
+    setSaving(true);
+    try {
+      await fetch("/api/admin/content", {
+        method: "PUT",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ key: "points_store", value: items }),
+      });
+      notify("Points berhasil disimpan! ✓", "success");
+      setEditIdx(null);
+    } catch {
+      notify("Gagal menyimpan points.", "error");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (loading)
+    return (
+      <div className="flex items-center gap-2 text-gray-400">
+        <Loader2 className="w-4 h-4 animate-spin" /> Memuat...
+      </div>
+    );
+
+  return (
+    <div>
+      <SectionHeader
+        title="Points"
+        subtitle="Kelola daftar paket points yang dijual di halaman Store"
+      />
+      <div className="flex gap-3 mb-5">
+        <button
+          onClick={addItem}
+          className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-white"
+          style={{
+            background: "rgba(16,185,129,0.15)",
+            border: "1px solid rgba(16,185,129,0.3)",
+          }}
+        >
+          <Plus className="w-4 h-4" /> Tambah Paket Points
+        </button>
+        <SaveButton loading={saving} onClick={save} />
+      </div>
+      <div className="space-y-3">
+        {items.map((item, idx) => (
+          <Card key={idx}>
+            {editIdx === idx ? (
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-xs text-gray-400 block mb-1">
+                    Nama Rank
+                  </label>
+                  <input
+                    value={item.rank}
+                    onChange={(e) => update(idx, "rank", e.target.value)}
+                    className="w-full px-3 py-2 rounded-lg text-sm text-white outline-none"
+                    style={{
+                      background: "rgba(255,255,255,0.05)",
+                      border: "1px solid rgba(255,255,255,0.1)",
+                    }}
+                  />
+                </div>
+                <div>
+                  <label className="text-xs text-gray-400 block mb-1">
+                    Slug
+                  </label>
+                  <input
+                    value={item.slug}
+                    onChange={(e) => update(idx, "slug", e.target.value)}
+                    className="w-full px-3 py-2 rounded-lg text-sm text-white outline-none"
+                    style={{
+                      background: "rgba(255,255,255,0.05)",
+                      border: "1px solid rgba(255,255,255,0.1)",
+                    }}
+                  />
+                </div>
+                <div>
+                  <label className="text-xs text-gray-400 block mb-1">
+                    Warna (Tailwind text-...)
+                  </label>
+                  <input
+                    value={item.color}
+                    onChange={(e) => update(idx, "color", e.target.value)}
+                    className="w-full px-3 py-2 rounded-lg text-sm text-white outline-none"
+                    style={{
+                      background: "rgba(255,255,255,0.05)",
+                      border: "1px solid rgba(255,255,255,0.1)",
+                    }}
+                  />
+                </div>
+                <div>
+                  <label className="text-xs text-gray-400 block mb-1">
+                    Harga (Rp)
+                  </label>
+                  <input
+                    type="number"
+                    value={item.harga}
+                    onChange={(e) =>
+                      update(idx, "harga", parseInt(e.target.value) || 0)
+                    }
+                    className="w-full px-3 py-2 rounded-lg text-sm text-white outline-none"
+                    style={{
+                      background: "rgba(255,255,255,0.05)",
+                      border: "1px solid rgba(255,255,255,0.1)",
+                    }}
+                  />
+                </div>
+                <div>
+                  <label className="text-xs text-gray-400 block mb-1">
+                    Jumlah Points
+                  </label>
+                  <input
+                    value={item.points}
+                    onChange={(e) => update(idx, "points", e.target.value)}
+                    className="w-full px-3 py-2 rounded-lg text-sm text-white outline-none"
+                    style={{
+                      background: "rgba(255,255,255,0.05)",
+                      border: "1px solid rgba(255,255,255,0.1)",
+                    }}
+                  />
+                </div>
+                <div>
+                  <label className="text-xs text-gray-400 block mb-1">
+                    Gradient (Tailwind from-... to-...)
+                  </label>
+                  <input
+                    value={item.gradient}
+                    onChange={(e) => update(idx, "gradient", e.target.value)}
+                    className="w-full px-3 py-2 rounded-lg text-sm text-white outline-none"
+                    style={{
+                      background: "rgba(255,255,255,0.05)",
+                      border: "1px solid rgba(255,255,255,0.1)",
+                    }}
+                  />
+                </div>
+              </div>
+            ) : (
+              <div className="flex items-center justify-between gap-4">
+                <div className="flex-1">
+                  <h4 className={`text-white font-medium ${item.color}`}>
+                    {item.rank}
+                  </h4>
+                  <p className="text-sm text-gray-400">
+                    {item.points} Points - Rp {item.harga.toLocaleString()}
+                  </p>
+                </div>
+                <div className="flex gap-1 flex-shrink-0">
+                  <button
+                    onClick={() => setEditIdx(editIdx === idx ? null : idx)}
+                    className="p-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-white/5"
+                  >
+                    {editIdx === idx ? (
+                      <Check className="w-4 h-4 text-emerald-400" />
+                    ) : (
+                      <Edit3 className="w-4 h-4" />
+                    )}
+                  </button>
+                  <button
+                    onClick={() => removeItem(idx)}
+                    className="p-1.5 rounded-lg text-gray-400 hover:text-red-400 hover:bg-red-500/10"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            )}
+          </Card>
+        ))}
+        {items.length === 0 && (
+          <div className="text-center py-12 text-gray-500 text-sm">
+            <Star className="w-10 h-10 mx-auto mb-3 opacity-20" />
+            Belum ada paket points. Klik "Tambah Paket Points" untuk
+            menambahkan.
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Money Section
+// ─────────────────────────────────────────────────────────────────────────────
+type MoneyItem = {
+  rank: string;
+  slug: string;
+  color: string;
+  harga: number;
+  money: string;
+  gradient: string;
+};
+
+function MoneySection({ admin }: { admin: AdminUser }) {
+  const [items, setItems] = useState<MoneyItem[]>([]);
+  const [saving, setSaving] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [editIdx, setEditIdx] = useState<number | null>(null);
+
+  const DEFAULT_MONEY_ITEM: MoneyItem = {
+    rank: "Member",
+    slug: "member-money",
+    color: "text-emerald-400",
+    harga: 4000,
+    money: "80,000",
+    gradient: "from-emerald-500 to-teal-500",
+  };
+
+  useEffect(() => {
+    fetch("/api/admin/content?key=money", { credentials: "include" })
+      .then((r) => r.json())
+      .then(({ data }) => {
+        if (data?.content_value && Array.isArray(data.content_value)) {
+          setItems(data.content_value);
+        } else {
+          // Load default from sample data if no data in DB
+          setItems([
+            {
+              rank: "Member",
+              slug: "member-money",
+              color: "text-emerald-400",
+              harga: 4000,
+              money: "80,000",
+              gradient: "from-emerald-500 to-teal-500",
+            },
+            {
+              rank: "VIP",
+              slug: "vip-money",
+              color: "text-blue-400",
+              harga: 8000,
+              money: "160,000",
+              gradient: "from-blue-500 to-indigo-500",
+            },
+            {
+              rank: "MVP",
+              slug: "mvp-money",
+              color: "text-purple-400",
+              harga: 20000,
+              money: "500,000",
+              gradient: "from-purple-500 to-violet-500",
+            },
+          ]);
+        }
+      })
+      .finally(() => setLoading(false));
+  }, []);
+
+  const addItem = () => {
+    setItems((p) => [...p, { ...DEFAULT_MONEY_ITEM }]);
+    setEditIdx(items.length);
+  };
+
+  const removeItem = (idx: number) => {
+    setItems((p) => p.filter((_, i) => i !== idx));
+    if (editIdx === idx) setEditIdx(null);
+  };
+
+  const update = (idx: number, field: keyof MoneyItem, value: unknown) =>
+    setItems((p) =>
+      p.map((item, i) => (i === idx ? { ...item, [field]: value } : item)),
+    );
+
+  const save = async () => {
+    setSaving(true);
+    try {
+      await fetch("/api/admin/content", {
+        method: "PUT",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ key: "money", value: items }),
+      });
+      notify("Money berhasil disimpan! ✓", "success");
+      setEditIdx(null);
+    } catch {
+      notify("Gagal menyimpan money.", "error");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (loading)
+    return (
+      <div className="flex items-center gap-2 text-gray-400">
+        <Loader2 className="w-4 h-4 animate-spin" /> Memuat...
+      </div>
+    );
+
+  return (
+    <div>
+      <SectionHeader
+        title="Money"
+        subtitle="Kelola daftar paket money in-game yang dijual di halaman Store"
+      />
+      <div className="flex gap-3 mb-5">
+        <button
+          onClick={addItem}
+          className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-white"
+          style={{
+            background: "rgba(16,185,129,0.15)",
+            border: "1px solid rgba(16,185,129,0.3)",
+          }}
+        >
+          <Plus className="w-4 h-4" /> Tambah Paket Money
+        </button>
+        <SaveButton loading={saving} onClick={save} />
+      </div>
+      <div className="space-y-3">
+        {items.map((item, idx) => (
+          <Card key={idx}>
+            {editIdx === idx ? (
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-xs text-gray-400 block mb-1">
+                    Nama Rank
+                  </label>
+                  <input
+                    value={item.rank}
+                    onChange={(e) => update(idx, "rank", e.target.value)}
+                    className="w-full px-3 py-2 rounded-lg text-sm text-white outline-none"
+                    style={{
+                      background: "rgba(255,255,255,0.05)",
+                      border: "1px solid rgba(255,255,255,0.1)",
+                    }}
+                  />
+                </div>
+                <div>
+                  <label className="text-xs text-gray-400 block mb-1">
+                    Slug
+                  </label>
+                  <input
+                    value={item.slug}
+                    onChange={(e) => update(idx, "slug", e.target.value)}
+                    className="w-full px-3 py-2 rounded-lg text-sm text-white outline-none"
+                    style={{
+                      background: "rgba(255,255,255,0.05)",
+                      border: "1px solid rgba(255,255,255,0.1)",
+                    }}
+                  />
+                </div>
+                <div>
+                  <label className="text-xs text-gray-400 block mb-1">
+                    Warna (Tailwind text-...)
+                  </label>
+                  <input
+                    value={item.color}
+                    onChange={(e) => update(idx, "color", e.target.value)}
+                    className="w-full px-3 py-2 rounded-lg text-sm text-white outline-none"
+                    style={{
+                      background: "rgba(255,255,255,0.05)",
+                      border: "1px solid rgba(255,255,255,0.1)",
+                    }}
+                  />
+                </div>
+                <div>
+                  <label className="text-xs text-gray-400 block mb-1">
+                    Harga (Rp)
+                  </label>
+                  <input
+                    type="number"
+                    value={item.harga}
+                    onChange={(e) =>
+                      update(idx, "harga", parseInt(e.target.value) || 0)
+                    }
+                    className="w-full px-3 py-2 rounded-lg text-sm text-white outline-none"
+                    style={{
+                      background: "rgba(255,255,255,0.05)",
+                      border: "1px solid rgba(255,255,255,0.1)",
+                    }}
+                  />
+                </div>
+                <div>
+                  <label className="text-xs text-gray-400 block mb-1">
+                    Jumlah Money
+                  </label>
+                  <input
+                    value={item.money}
+                    onChange={(e) => update(idx, "money", e.target.value)}
+                    className="w-full px-3 py-2 rounded-lg text-sm text-white outline-none"
+                    style={{
+                      background: "rgba(255,255,255,0.05)",
+                      border: "1px solid rgba(255,255,255,0.1)",
+                    }}
+                  />
+                </div>
+                <div>
+                  <label className="text-xs text-gray-400 block mb-1">
+                    Gradient (Tailwind from-... to-...)
+                  </label>
+                  <input
+                    value={item.gradient}
+                    onChange={(e) => update(idx, "gradient", e.target.value)}
+                    className="w-full px-3 py-2 rounded-lg text-sm text-white outline-none"
+                    style={{
+                      background: "rgba(255,255,255,0.05)",
+                      border: "1px solid rgba(255,255,255,0.1)",
+                    }}
+                  />
+                </div>
+              </div>
+            ) : (
+              <div className="flex items-center justify-between gap-4">
+                <div className="flex-1">
+                  <h4 className={`text-white font-medium ${item.color}`}>
+                    {item.rank}
+                  </h4>
+                  <p className="text-sm text-gray-400">
+                    {item.money} Money - Rp {item.harga.toLocaleString()}
+                  </p>
+                </div>
+                <div className="flex gap-1 flex-shrink-0">
+                  <button
+                    onClick={() => setEditIdx(editIdx === idx ? null : idx)}
+                    className="p-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-white/5"
+                  >
+                    {editIdx === idx ? (
+                      <Check className="w-4 h-4 text-emerald-400" />
+                    ) : (
+                      <Edit3 className="w-4 h-4" />
+                    )}
+                  </button>
+                  <button
+                    onClick={() => removeItem(idx)}
+                    className="p-1.5 rounded-lg text-gray-400 hover:text-red-400 hover:bg-red-500/10"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            )}
+          </Card>
+        ))}
+        {items.length === 0 && (
+          <div className="text-center py-12 text-gray-500 text-sm">
+            <Coins className="w-10 h-10 mx-auto mb-3 opacity-20" />
+            Belum ada paket money. Klik "Tambah Paket Money" untuk menambahkan.
+          </div>
+        )}
+      </div>
     </div>
   );
 }

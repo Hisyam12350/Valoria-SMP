@@ -405,26 +405,36 @@ export default function PaymentPage() {
         product.originalPriceNum,
         product.discount ?? 0,
       );
-      const res = await fetch("/api/voucher/check", {
+      const res = await fetch("/api/store/check-discount", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ code: voucherCode, price: basePrice }),
+        body: JSON.stringify({
+          code: voucherCode,
+          price: basePrice,
+          username: username, // Untuk cek penggunaan per user
+        }),
       });
       const data = await res.json();
-      if (data.valid) {
+      if (data.success) {
+        const finalPrice = basePrice - data.discountAmount;
         setVoucherApplied(true);
-        setVoucherMessage(data.message);
+        setVoucherMessage(
+          `Diskon berhasil diterapkan! Potongan Rp ${data.discountAmount.toLocaleString("id-ID")}`,
+        );
         setDiscountAmount(data.discountAmount);
-        setVoucherFinalPrice(data.finalPrice);
-        toast({ title: "Voucher berhasil!", description: data.message });
+        setVoucherFinalPrice(finalPrice);
+        toast({
+          title: "Diskon berhasil!",
+          description: `Potongan Rp ${data.discountAmount.toLocaleString("id-ID")}`,
+        });
       } else {
         setVoucherApplied(false);
-        setVoucherMessage(data.message ?? "Voucher tidak valid");
+        setVoucherMessage(data.error ?? "Kode diskon tidak valid");
         setDiscountAmount(0);
         setVoucherFinalPrice(null);
       }
     } catch {
-      setVoucherMessage("Gagal mengecek voucher");
+      setVoucherMessage("Gagal mengecek diskon");
     } finally {
       setIsCheckingVoucher(false);
     }
@@ -460,7 +470,31 @@ export default function PaymentPage() {
         product.originalPriceNum,
         product.discount ?? 0,
       );
-      const finalPrice = voucherFinalPrice ?? basePrice;
+      let finalPrice = basePrice;
+
+      // Terapkan diskon jika ada
+      if (voucherApplied && voucherCode) {
+        const applyRes = await fetch("/api/store/check-discount", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            code: voucherCode,
+            price: basePrice,
+            username: username,
+            apply: true,
+          }),
+        });
+        const applyData = await applyRes.json();
+        if (!applyData.success) {
+          toast({
+            title: "Gagal",
+            description: applyData.error ?? "Gagal menerapkan diskon",
+            variant: "destructive",
+          });
+          return;
+        }
+        finalPrice = basePrice - applyData.discountAmount;
+      }
 
       const res = await fetch("/api/payment/create", {
         method: "POST",
@@ -490,8 +524,12 @@ export default function PaymentPage() {
       const tx = data.data;
 
       if (["gopay", "shopeepay", "ovo", "dana"].includes(selectedMethod)) {
-        const payUrl = tx.pay_url || tx.actions?.find((a: any) => a.name === "deeplink-redirect")?.url;
-        const qr = tx.qr_url || tx.actions?.find((a: any) => a.name === "generate-qr-code")?.url;
+        const payUrl =
+          tx.pay_url ||
+          tx.actions?.find((a: any) => a.name === "deeplink-redirect")?.url;
+        const qr =
+          tx.qr_url ||
+          tx.actions?.find((a: any) => a.name === "generate-qr-code")?.url;
         if (payUrl) window.location.href = payUrl;
         else if (qr) {
           router.push(
@@ -505,7 +543,9 @@ export default function PaymentPage() {
           });
         }
       } else if (selectedMethod === "qris") {
-        const qr = tx.qr_url || tx.actions?.find((a: any) => a.name === "generate-qr-code")?.url;
+        const qr =
+          tx.qr_url ||
+          tx.actions?.find((a: any) => a.name === "generate-qr-code")?.url;
         if (qr) {
           router.push(
             `/payment/instruction?orderId=${data.orderId}&method=qris&qrUrl=${encodeURIComponent(qr)}&amount=${finalPrice}`,
@@ -525,10 +565,13 @@ export default function PaymentPage() {
           `/payment/instruction?orderId=${data.orderId}&method=${selectedMethod}&paymentCode=${paymentCode}&amount=${finalPrice}`,
         );
       } else if (["akulaku", "kredivo"].includes(selectedMethod)) {
-        const payUrl = tx.pay_url || tx.actions?.find((a: any) => a.name === "redirect-url")?.url;
+        const payUrl =
+          tx.pay_url ||
+          tx.actions?.find((a: any) => a.name === "redirect-url")?.url;
         if (payUrl) window.location.href = payUrl;
       } else {
-        const vaNumber = tx.pay_code || tx.va_numbers?.[0]?.va_number || tx.bill_key || "";
+        const vaNumber =
+          tx.pay_code || tx.va_numbers?.[0]?.va_number || tx.bill_key || "";
         router.push(
           `/payment/instruction?orderId=${data.orderId}&method=${selectedMethod}&vaNumber=${vaNumber}&amount=${finalPrice}`,
         );
@@ -941,9 +984,9 @@ export default function PaymentPage() {
                   )}
                 </AnimatePresence>
 
-                {/* Voucher */}
+                {/* Diskon */}
                 <div className="rpg-divider">
-                  <span>Voucher</span>
+                  <span>Diskon</span>
                 </div>
                 <div className="rpg-field">
                   <label className="rpg-label">
@@ -951,7 +994,7 @@ export default function PaymentPage() {
                       size={11}
                       style={{ display: "inline", marginRight: 4 }}
                     />
-                    Kode Voucher (opsional)
+                    Kode Diskon (opsional)
                   </label>
                   {voucherApplied ? (
                     <div className="rpg-voucher-applied">
@@ -996,7 +1039,7 @@ export default function PaymentPage() {
                     <div className="rpg-voucher-input-wrap">
                       <input
                         type="text"
-                        placeholder="Masukkan kode voucher"
+                        placeholder="Masukkan kode diskon"
                         value={voucherCode}
                         onChange={(e) => {
                           setVoucherCode(e.target.value.toUpperCase());
@@ -1100,7 +1143,7 @@ export default function PaymentPage() {
                   </div>
                   {voucherApplied && (
                     <div className="rpg-summary-row">
-                      <span>Diskon Voucher</span>
+                      <span>Diskon</span>
                       <span style={{ color: "#4ade80" }}>
                         - {formatRupiah(discountAmount)}
                       </span>
@@ -1154,10 +1197,7 @@ export default function PaymentPage() {
               </div>
             </div>
 
-            <button
-              onClick={() => router.back()}
-              className="rpg-back-btn"
-            >
+            <button onClick={() => router.back()} className="rpg-back-btn">
               ← Kembali ke Store
             </button>
           </motion.div>
