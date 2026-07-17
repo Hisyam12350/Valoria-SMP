@@ -11,6 +11,19 @@ function getCategoryFromSlug(slug: string): string {
   return "rank";
 }
 
+function getRequestBaseUrl(req: Request): string {
+  const proto =
+    req.headers.get("x-forwarded-proto") ||
+    (req.headers.get("origin")?.startsWith("https://") ? "https" : "http");
+
+  const host =
+    req.headers.get("x-forwarded-host") ||
+    req.headers.get("host") ||
+    "localhost:3000";
+
+  return `${proto}://${host}`.replace(/\/$/, "");
+}
+
 // ── Verifikasi Cloudflare Turnstile ──────────────────────────────────────────
 async function verifyTurnstile(token: string, ip: string): Promise<boolean> {
   const res = await fetch(
@@ -23,7 +36,7 @@ async function verifyTurnstile(token: string, ip: string): Promise<boolean> {
         response: token,
         remoteip: ip,
       }),
-    }
+    },
   );
   const data = await res.json();
   return data.success === true;
@@ -64,7 +77,7 @@ export async function POST(req: Request) {
     if (!uuid || !username || !productName || !price || !paymentMethod) {
       return NextResponse.json(
         { success: false, error: "Data tidak lengkap" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -72,7 +85,7 @@ export async function POST(req: Request) {
     if (!turnstileToken) {
       return NextResponse.json(
         { success: false, error: "Verifikasi keamanan diperlukan" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -84,8 +97,11 @@ export async function POST(req: Request) {
     const isTurnstileValid = await verifyTurnstile(turnstileToken, ip);
     if (!isTurnstileValid) {
       return NextResponse.json(
-        { success: false, error: "Verifikasi keamanan gagal, silakan refresh halaman" },
-        { status: 403 }
+        {
+          success: false,
+          error: "Verifikasi keamanan gagal, silakan refresh halaman",
+        },
+        { status: 403 },
       );
     }
 
@@ -93,7 +109,7 @@ export async function POST(req: Request) {
     if (isNaN(grossAmount) || grossAmount <= 0) {
       return NextResponse.json(
         { success: false, error: "Harga tidak valid" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -104,20 +120,27 @@ export async function POST(req: Request) {
     const tripayMethod = TRIPAY_METHODS_MAP[paymentMethod.toLowerCase()];
     if (!tripayMethod) {
       return NextResponse.json(
-        { success: false, error: "Metode pembayaran tidak didukung oleh gateway Tripay" },
-        { status: 400 }
+        {
+          success: false,
+          error: "Metode pembayaran tidak didukung oleh gateway Tripay",
+        },
+        { status: 400 },
       );
     }
 
     // ── Get Tripay Config & Generate Signature ──────────────────────────────
     const merchantCode = process.env.TRIPAY_MERCHANT_CODE || "T0000";
-    const privateKey = process.env.TRIPAY_PRIVATE_KEY || "placeholder_private_key";
+    const privateKey =
+      process.env.TRIPAY_PRIVATE_KEY || "placeholder_private_key";
     const tripayApiKey = process.env.TRIPAY_API_KEY || "placeholder_api_key";
-    const isProduction = process.env.NEXT_PUBLIC_TRIPAY_IS_PRODUCTION === "true" || process.env.TRIPAY_IS_PRODUCTION === "true";
+    const isProduction =
+      process.env.NEXT_PUBLIC_TRIPAY_IS_PRODUCTION === "true" ||
+      process.env.TRIPAY_IS_PRODUCTION === "true";
 
     const tripayBaseUrl = isProduction
       ? "https://tripay.co.id/api"
       : "https://tripay.co.id/api-sandbox";
+    const requestBaseUrl = getRequestBaseUrl(req);
 
     // Signature closed payment: merchant_code + merchant_ref + amount
     const signature = crypto
@@ -139,10 +162,10 @@ export async function POST(req: Request) {
           name: productName,
           price: grossAmount,
           quantity: 1,
-        }
+        },
       ],
-      callback_url: `${process.env.NEXT_PUBLIC_BASE_URL}/api/payment/notification`,
-      return_url: `${process.env.NEXT_PUBLIC_BASE_URL}/payment/success`,
+      callback_url: `${requestBaseUrl}/api/payment/notification`,
+      return_url: `${requestBaseUrl}/payment/success`,
       expired_time: Math.floor(Date.now() / 1000) + 24 * 3600, // 24 jam
       signature,
     };
@@ -160,11 +183,20 @@ export async function POST(req: Request) {
 
     const tripayResult = await tripayResponse.json();
 
-    if (!tripayResponse.ok || !tripayResult || !tripayResult.success || !tripayResult.data) {
+    if (
+      !tripayResponse.ok ||
+      !tripayResult ||
+      !tripayResult.success ||
+      !tripayResult.data
+    ) {
       console.error("[TRIPAY] API error:", tripayResult);
       return NextResponse.json(
-        { success: false, error: tripayResult?.message || "Gagal membuat transaksi dengan Tripay" },
-        { status: 502 }
+        {
+          success: false,
+          error:
+            tripayResult?.message || "Gagal membuat transaksi dengan Tripay",
+        },
+        { status: 502 },
       );
     }
 
@@ -172,20 +204,18 @@ export async function POST(req: Request) {
 
     // ── Simpan transaksi ke Supabase ─────────────────────────────────────────
     // Kolom `midtrans_data` dipertahankan untuk menyimpan respon Tripay agar tidak merusak skema database Supabase
-    const { error: dbError } = await supabaseAdmin
-      .from("transactions")
-      .insert({
-        order_id: orderId,
-        uuid,
-        username,
-        product_name: productName,
-        slug: slug ?? "",
-        category,
-        price: grossAmount,
-        payment_method: paymentMethod,
-        status: "pending",
-        midtrans_data: tripayData,
-      });
+    const { error: dbError } = await supabaseAdmin.from("transactions").insert({
+      order_id: orderId,
+      uuid,
+      username,
+      product_name: productName,
+      slug: slug ?? "",
+      category,
+      price: grossAmount,
+      payment_method: paymentMethod,
+      status: "pending",
+      midtrans_data: tripayData,
+    });
 
     if (dbError) {
       console.error("[PAYMENT_CREATE] Supabase insert error:", dbError.message);
@@ -202,7 +232,7 @@ export async function POST(req: Request) {
     console.error("[PAYMENT_CREATE] Error:", error);
     return NextResponse.json(
       { success: false, error: error.message ?? "Internal server error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
