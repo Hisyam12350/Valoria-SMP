@@ -6,14 +6,16 @@ import { usePathname } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Home, Server, Store, Trophy, Vote, Users, Share2,
-  Shield, BookOpen, Settings, Menu, X, ChevronRight
+  Shield, BookOpen, Settings, Menu, X, ChevronRight, LogOut, User
 } from 'lucide-react';
 import { SERVER_LOGO, NAV_ITEMS } from '@/lib/constants';
+import { usePlayer } from '@/context/PlayerContext';
 
 const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
   home: Home,
   'server-info': Server,
   store: Store,
+  profile: User,
   achievements: Trophy,
   vote: Vote,
   staff: Users,
@@ -24,6 +26,7 @@ const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
 
 export function Sidebar() {
   const [isOpen, setIsOpen] = useState(false);
+  const { player, openLoginModal, logout } = usePlayer();
   const pathname = usePathname();
 
   if (pathname.startsWith('/admin')) return null;
@@ -92,6 +95,61 @@ export function Sidebar() {
               </button>
             </div>
 
+            {/* Player Profile Section */}
+            <div className="px-5 py-4 border-b border-white/8 bg-black/20">
+              {player ? (
+                <div className="flex flex-col gap-3">
+                  <div className="flex items-center gap-3">
+                    <img
+                      src={`https://mc-heads.net/avatar/${player.username}/40`}
+                      alt={player.username}
+                      className="w-10 h-10 rounded-lg bg-black/30 border border-white/10 shadow-inner flex-shrink-0"
+                    />
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm font-bold text-amber-400 truncate">
+                        {player.username.startsWith('.') ? (
+                          <>
+                            <span className="font-minecraft mr-[-0.25em]">.</span>
+                            <span className="font-minecraft">{player.username.substring(1).trim()}</span>
+                          </>
+                        ) : (
+                          <span className="font-minecraft">{player.username}</span>
+                        )}
+                      </div>
+                      <div className="text-[11px] text-gray-400 font-medium">
+                        Rank: <span className="text-emerald-400 font-bold">{player.rank}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={() => {
+                      logout();
+                      setIsOpen(false);
+                    }}
+                    className="flex items-center justify-center gap-2 w-full py-1.5 rounded-lg text-xs font-semibold text-red-400 hover:bg-red-500/10 border border-red-500/20 transition-all"
+                  >
+                    <LogOut className="w-3.5 h-3.5" />
+                    Keluar Akun
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={() => {
+                    openLoginModal();
+                    setIsOpen(false);
+                  }}
+                  className="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl text-sm font-bold text-white shadow-md hover:brightness-110 active:scale-95 transition-all select-none"
+                  style={{
+                    background: 'linear-gradient(90deg, #10b981 0%, #059669 100%)',
+                  }}
+                >
+                  <User className="w-4 h-4" />
+                  Masuk Akun Player
+                </button>
+              )}
+            </div>
+
             {/* Nav items */}
             <nav className="flex-1 overflow-y-auto py-4 px-3 space-y-1">
               {NAV_ITEMS.map((item, i) => {
@@ -105,11 +163,10 @@ export function Sidebar() {
                     transition={{ delay: i * 0.04 }}
                   >
                     <Link href={item.href} onClick={() => setIsOpen(false)}>
-                      <div className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all cursor-pointer group ${
-                        active
+                      <div className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all cursor-pointer group ${active
                           ? 'bg-emerald-500/20 text-emerald-400'
                           : 'text-gray-400 hover:text-white hover:bg-white/8'
-                      }`}>
+                        }`}>
                         {Icon && <Icon className="w-4 h-4 flex-shrink-0" />}
                         <span className="text-sm font-medium flex-1">{item.label}</span>
                         {active && <ChevronRight className="w-3 h-3 opacity-60" />}

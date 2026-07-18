@@ -117,10 +117,12 @@ BEGIN
 END;
 $$ language 'plpgsql';
 
+DROP TRIGGER IF EXISTS update_admin_users_updated_at ON admin_users;
 CREATE TRIGGER update_admin_users_updated_at
   BEFORE UPDATE ON admin_users
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+DROP TRIGGER IF EXISTS update_site_content_updated_at ON site_content;
 CREATE TRIGGER update_site_content_updated_at
   BEFORE UPDATE ON site_content
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
@@ -163,3 +165,97 @@ ON CONFLICT (content_key) DO NOTHING;
 INSERT INTO site_content (content_key, content_value, description) VALUES
 ('tutorials', '[]'::jsonb, 'Data tutorial video - kelola via admin dashboard')
 ON CONFLICT (content_key) DO NOTHING;
+
+-- ============================================================
+-- TABLE: players
+-- ============================================================
+CREATE TABLE IF NOT EXISTS public.players (
+  id UUID NOT NULL DEFAULT extensions.uuid_generate_v4(),
+  username CHARACTER VARYING(100) NOT NULL,
+  rank CHARACTER VARYING(50) NULL DEFAULT 'Member'::character varying,
+  points INTEGER DEFAULT 0,
+  money INTEGER DEFAULT 0,
+  created_at TIMESTAMP WITH TIME ZONE NULL DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE NULL DEFAULT NOW(),
+  CONSTRAINT players_pkey PRIMARY KEY (id),
+  CONSTRAINT players_username_key UNIQUE (username)
+) TABLESPACE pg_default;
+
+-- ============================================================
+-- TABLE: transactions
+-- ============================================================
+CREATE TABLE IF NOT EXISTS transactions (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  order_id VARCHAR(100) UNIQUE NOT NULL,
+  uuid VARCHAR(100) NOT NULL,
+  username VARCHAR(100) NOT NULL REFERENCES players(username) ON DELETE CASCADE ON UPDATE CASCADE,
+  product_name TEXT NOT NULL,
+  slug TEXT NOT NULL,
+  category TEXT NOT NULL,
+  price INTEGER NOT NULL,
+  payment_method TEXT NOT NULL,
+  status VARCHAR(20) DEFAULT 'pending',
+  midtrans_data JSONB,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- ============================================================
+-- TABLE: payment_logs (Riwayat Pembayaran)
+-- ============================================================
+CREATE TABLE IF NOT EXISTS payment_logs (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  order_id VARCHAR(100) NOT NULL REFERENCES transactions(order_id) ON DELETE CASCADE ON UPDATE CASCADE,
+  uuid VARCHAR(100) NOT NULL,
+  username VARCHAR(100) NOT NULL REFERENCES players(username) ON DELETE CASCADE ON UPDATE CASCADE,
+  category VARCHAR(50) NOT NULL,
+  product_name TEXT NOT NULL,
+  price INTEGER NOT NULL,
+  slug TEXT NOT NULL,
+  rcon_response TEXT,
+  rcon_success BOOLEAN DEFAULT false,
+  executed_at TIMESTAMPTZ DEFAULT NOW(),
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- ============================================================
+-- TABLE: riwayat (Tabel Riwayat Umum jika diperlukan terpisah)
+-- ============================================================
+CREATE TABLE IF NOT EXISTS riwayat (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  username VARCHAR(100) NOT NULL REFERENCES players(username) ON DELETE CASCADE ON UPDATE CASCADE,
+  order_id VARCHAR(100) NOT NULL REFERENCES transactions(order_id) ON DELETE CASCADE ON UPDATE CASCADE,
+  description TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- ============================================================
+-- TRIGGERS for updated_at
+-- ============================================================
+DROP TRIGGER IF EXISTS update_players_updated_at ON players;
+CREATE TRIGGER update_players_updated_at
+  BEFORE UPDATE ON players
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+DROP TRIGGER IF EXISTS update_transactions_updated_at ON transactions;
+CREATE TRIGGER update_transactions_updated_at
+  BEFORE UPDATE ON transactions
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- ============================================================
+-- INDEXES for new tables
+-- ============================================================
+CREATE INDEX IF NOT EXISTS idx_players_username ON players(username);
+CREATE INDEX IF NOT EXISTS idx_transactions_order_id ON transactions(order_id);
+CREATE INDEX IF NOT EXISTS idx_transactions_username ON transactions(username);
+CREATE INDEX IF NOT EXISTS idx_payment_logs_username ON payment_logs(username);
+CREATE INDEX IF NOT EXISTS idx_payment_logs_order_id ON payment_logs(order_id);
+CREATE INDEX IF NOT EXISTS idx_riwayat_username ON riwayat(username);
+CREATE INDEX IF NOT EXISTS idx_riwayat_order_id ON riwayat(order_id);
+
+-- Disable Row Level Security for server-side access
+ALTER TABLE players DISABLE ROW LEVEL SECURITY;
+ALTER TABLE transactions DISABLE ROW LEVEL SECURITY;
+ALTER TABLE payment_logs DISABLE ROW LEVEL SECURITY;
+ALTER TABLE riwayat DISABLE ROW LEVEL SECURITY;
+

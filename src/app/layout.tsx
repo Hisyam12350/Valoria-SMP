@@ -6,6 +6,7 @@ import { Sidebar } from "@/components/sidebar";
 import { Footer } from "@/components/footer";
 import { MusicPlayer } from "@/components/music-player";
 import { BACKGROUND_IMAGE } from "@/lib/constants";
+import { PlayerProvider } from "@/context/PlayerContext";
 import Script from "next/script";
 
 const minecraftFont = Press_Start_2P({
@@ -88,12 +89,14 @@ export default function RootLayout({
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm -z-10" />
 
         {/* Content */}
-        <div className="relative z-10 flex flex-col min-h-screen">
-          <Sidebar />
-          <main className="flex-1 pl-0">{children}</main>
-          <Footer />
-          <MusicPlayer />
-        </div>
+        <PlayerProvider>
+          <div className="relative z-10 flex flex-col min-h-screen">
+            <Sidebar />
+            <main className="flex-1 pl-0">{children}</main>
+            <Footer />
+            <MusicPlayer />
+          </div>
+        </PlayerProvider>
 
         <Toaster />
       </body>

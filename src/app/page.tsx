@@ -32,7 +32,7 @@ export default function HomePage() {
   const serverIp = typeof rawServerIp === 'string' ? rawServerIp : SERVER_IP;
   const bedrockPort = typeof rawBedrockPort === 'string' ? rawBedrockPort : BEDROCK_PORT;
   const discordLink = typeof rawDiscordLink === 'string' ? rawDiscordLink : DISCORD_LINK;
-  const waGroup = typeof rawWaGroup === 'string' ? rawWaGroup : WHATSAPP_GROUP;
+  const waGroup = typeof rawWaGroup === 'string' ? rawWaGroup : "";
   const serverLogo = typeof rawServerLogo === 'string' ? rawServerLogo : SERVER_LOGO;
   const features: Feature[] = Array.isArray(rawFeatures) ? rawFeatures as Feature[] : SERVER_FEATURES;
 

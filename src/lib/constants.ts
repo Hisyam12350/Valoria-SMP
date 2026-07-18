@@ -2,7 +2,7 @@
 export const SERVER_IP = 'play.valoriasmp.my.id';
 export const BEDROCK_PORT = '19230';
 // WHATSAPP_NUMBER removed — payment now handled by Midtrans
-export const DISCORD_LINK = 'https://discord.gg/TrVjrSSbr';
+export const DISCORD_LINK = 'https://discord.gg/Z2cDERrc6Z';
 // WHATSAPP_GROUP removed — payment now handled by Midtrans
 export const VOTE_LINK = 'https://minecraft-mp.com/server/354242/vote/';
 
@@ -15,6 +15,7 @@ export const NAV_ITEMS = [
   { id: 'home', label: 'Home', href: '/' },
   { id: 'server-info', label: 'Server Info', href: '/server-info' },
   { id: 'store', label: 'Store', href: '/store' },
+  { id: 'profile', label: 'Profil', href: '/profile' },
   { id: 'achievements', label: 'Achievements', href: '/achievements' },
   { id: 'vote', label: 'Vote', href: '/vote' },
   { id: 'staff', label: 'Staff', href: '/staff' },
@@ -223,7 +224,7 @@ export const SOCIAL_LINKS = [
   },
   { 
     name: 'WhatsApp Group', 
-    url: 'https://chat.whatsapp.com/FHCCTH72yxE7nbAqb2AFnG', 
+    url: 'https://chat.whatsapp.com/CJEURtE7WiJDqUzuEtIQCV?s=sh&p=a&ilr=0', 
     color: 'bg-green-500',
     description: 'Chat langsung dengan pemain lain',
     members: '200+ Members'

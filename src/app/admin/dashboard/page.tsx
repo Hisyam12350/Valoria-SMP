@@ -3509,9 +3509,16 @@ function DiscountsSection({ admin }: { admin: AdminUser }) {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [form, setForm] = useState({
+  const [form, setForm] = useState<{
+    kode: string;
+    discount_type: "percent" | "fixed";
+    discount_value: number;
+    max_uses: number;
+    expired_at: string;
+    is_active: boolean;
+  }>({
     kode: "",
-    discount_type: "percent" as const,
+    discount_type: "percent",
     discount_value: 0,
     max_uses: 0,
     expired_at: "",

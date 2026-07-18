@@ -15,6 +15,7 @@ import {
 import { toast } from "@/hooks/use-toast";
 import { PageWrapper } from "@/components/page-wrapper";
 import { Turnstile } from "@marsidev/react-turnstile";
+import { usePlayer } from "@/context/PlayerContext";
 
 type ProductType = "rank" | "money" | "points" | "skill";
 
@@ -147,6 +148,7 @@ export default function PaymentPage() {
   const params = useParams();
   const router = useRouter();
   const slug = params.slug as string;
+  const { player, loading, openLoginModal } = usePlayer();
 
   const [product, setProduct] = useState<Product | null>(null);
   const [productType, setProductType] = useState<ProductType>("rank");
@@ -178,6 +180,23 @@ export default function PaymentPage() {
   useEffect(() => {
     fetchProduct();
   }, [slug]);
+
+  useEffect(() => {
+    if (!loading && !player) {
+      openLoginModal();
+    }
+  }, [player, loading]);
+
+  useEffect(() => {
+    if (player) {
+      setUsername(player.username);
+      checkPlayer(player.username);
+    } else {
+      setUsername("");
+      setUuid("");
+      setIsPlayerFound(false);
+    }
+  }, [player]);
 
   const fetchProduct = async () => {
     try {
@@ -463,6 +482,15 @@ export default function PaymentPage() {
   };
 
   const handlePayment = async () => {
+    if (!player) {
+      toast({
+        title: "Login Diperlukan",
+        description: "Anda harus masuk ke akun player terlebih dahulu.",
+        variant: "destructive",
+      });
+      openLoginModal();
+      return;
+    }
     if (!product || !isPlayerFound || !selectedMethod) return;
     try {
       setIsLoading(true);
@@ -916,22 +944,37 @@ export default function PaymentPage() {
 
               <div className="rpg-form-body">
                 {/* Username */}
-                <div className="rpg-field">
-                  <label className="rpg-label">Username Minecraft</label>
-                  <input
-                    type="text"
-                    placeholder="Contoh: Steve123"
-                    value={username}
-                    onChange={(e) => {
-                      setUsername(e.target.value);
-                      checkPlayer(e.target.value);
-                    }}
-                    className="rpg-input"
-                  />
-                  <span className="rpg-hint">
-                    Harus sudah pernah join server VALORIA SMP
-                  </span>
-                </div>
+                {!player ? (
+                  <div className="flex flex-col items-center justify-center p-6 text-center bg-red-500/10 border border-red-500/20 rounded-xl space-y-3 w-full">
+                    <AlertCircle className="w-8 h-8 text-red-400 animate-pulse" />
+                    <div>
+                      <h4 className="text-sm font-bold text-white">Login Player Diperlukan</h4>
+                      <p className="text-xs text-gray-400 mt-1">
+                        Anda harus masuk menggunakan akun Minecraft (Java/Bedrock) terlebih dahulu untuk melanjutkan pembayaran.
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => openLoginModal()}
+                      className="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 active:scale-95 text-white text-xs font-bold rounded-lg transition-all"
+                    >
+                      Masuk Akun Player
+                    </button>
+                  </div>
+                ) : (
+                  <div className="rpg-field w-full">
+                    <label className="rpg-label">Username Minecraft</label>
+                    <input
+                      type="text"
+                      disabled={true}
+                      value={username}
+                      className="rpg-input opacity-70 cursor-not-allowed"
+                    />
+                    <span className="rpg-hint flex items-center gap-1 text-emerald-400 mt-2">
+                      <CheckCircle2 size={12} /> Terhubung sebagai {username} ({player.rank})
+                    </span>
+                  </div>
+                )}
 
                 <AnimatePresence mode="wait">
                   {isCheckingPlayer && (

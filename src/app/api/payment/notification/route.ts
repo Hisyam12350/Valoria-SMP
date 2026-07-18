@@ -172,6 +172,11 @@ async function handleSuccessfulPayment({
 
       console.log(`[RCON] ✅ Give ${amount} points to ${username}`);
 
+      // Update points in Supabase players table
+      const { data: playerPoints } = await supabaseAdmin.from("players").select("points").eq("username", username).maybeSingle();
+      const currentPoints = playerPoints ? (playerPoints.points ?? 0) : 0;
+      await supabaseAdmin.from("players").update({ points: currentPoints + amount }).eq("username", username);
+
     } else if (category === "money") {
       // slug format: "money-starter", "money-basic", dll
       const rankSlug = slug.replace("money-", "");
@@ -196,12 +201,20 @@ async function handleSuccessfulPayment({
 
       console.log(`[RCON] ✅ Give ${amount} money to ${username}`);
 
+      // Update money in Supabase players table
+      const { data: playerMoney } = await supabaseAdmin.from("players").select("money").eq("username", username).maybeSingle();
+      const currentMoney = playerMoney ? (playerMoney.money ?? 0) : 0;
+      await supabaseAdmin.from("players").update({ money: currentMoney + amount }).eq("username", username);
+
     } else if (category === "rank") {
       // slug langsung nama rank, misal: "starter", "noble", dll
       rconResponse = await giveRank(username, slug);
       rconSuccess = true;
 
       console.log(`[RCON] ✅ Give rank ${slug} to ${username}`);
+
+      // Update rank in Supabase players table
+      await supabaseAdmin.from("players").update({ rank: slug }).eq("username", username);
 
     } else if (category === "skills") {
       // slug format: "skill-mining-5" → skill: mining, level: 5

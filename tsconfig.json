@@ -38,6 +38,8 @@
     "src/lib/mysql.ts"
   ],
   "exclude": [
-    "node_modules"
+    "node_modules",
+    "examples",
+    "mini-services"
   ]
 }

@@ -27,6 +27,7 @@ import {
 import { toast } from "@/hooks/use-toast";
 import { PageWrapper } from "@/components/page-wrapper";
 import { useSiteContent } from "@/lib/use-site-content";
+import { usePlayer } from "@/context/PlayerContext";
 import {
   RANKS,
   AVAILABLE_SKILLS,
@@ -141,6 +142,7 @@ async function triggerSnapPayment({
 
 export default function StorePage() {
   const router = useRouter();
+  const { player, openLoginModal } = usePlayer();
 
   const { value: rawRanks } = useSiteContent<unknown>("ranks", RANKS);
   const { value: rawSkills } = useSiteContent<unknown>(
@@ -230,6 +232,15 @@ export default function StorePage() {
 
   // ── Rank → langsung push ke /payment/[slug] ──
   const openRankPurchaseDialog = (rank: (typeof RANKS)[0]) => {
+    if (!player) {
+      toast({
+        title: "Login Diperlukan",
+        description: "Anda harus masuk ke akun player terlebih dahulu sebelum melakukan transaksi.",
+        variant: "destructive",
+      });
+      openLoginModal();
+      return;
+    }
     if (!rank?.slug) {
       toast({
         title: "Error",
@@ -243,20 +254,47 @@ export default function StorePage() {
 
   // ── Buka dialog untuk Points / Money / Skills ──
   const openDialog = (type: PurchaseItemType) => {
+    if (!player) {
+      toast({
+        title: "Login Diperlukan",
+        description: "Anda harus masuk ke akun player terlebih dahulu sebelum melakukan transaksi.",
+        variant: "destructive",
+      });
+      openLoginModal();
+      return;
+    }
     setPurchaseType(type);
-    setPlayerName("");
-    setPlayerUuid("");
-    setIsPlayerFound(false);
+    setPlayerName(player.username);
+    setPlayerUuid(player.username);
+    setIsPlayerFound(true);
     setPurchaseDialogOpen(true);
   };
 
   // ── Buka dialog khusus Points item ──
   const openPointsDialog = (item: PointsItem) => {
+    if (!player) {
+      toast({
+        title: "Login Diperlukan",
+        description: "Anda harus masuk ke akun player terlebih dahulu sebelum melakukan transaksi.",
+        variant: "destructive",
+      });
+      openLoginModal();
+      return;
+    }
     router.push(`/payment/points-${item.slug}`);
   };
 
   // ── Buka dialog khusus Money item ──
   const openMoneyDialog = (item: MoneyItem) => {
+    if (!player) {
+      toast({
+        title: "Login Diperlukan",
+        description: "Anda harus masuk ke akun player terlebih dahulu sebelum melakukan transaksi.",
+        variant: "destructive",
+      });
+      openLoginModal();
+      return;
+    }
     router.push(`/payment/money-${item.slug}`);
   };
 
@@ -862,11 +900,8 @@ export default function StorePage() {
                 id="playerUuid"
                 placeholder="Masukkan username Minecraft"
                 value={playerUuid}
-                onChange={(e) => {
-                  setPlayerUuid(e.target.value);
-                  checkPlayer(e.target.value);
-                }}
-                className="bg-white/5 border-white/10 h-9"
+                disabled={true}
+                className="bg-white/5 border-white/10 h-9 opacity-70 cursor-not-allowed"
               />
               {isCheckingPlayer && (
                 <p className="text-xs text-gray-400 flex items-center gap-1">
