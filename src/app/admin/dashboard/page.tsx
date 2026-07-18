@@ -3853,8 +3853,6 @@ type Player = {
   id: string;
   username: string;
   rank: string;
-  points: number;
-  money: number;
   created_at: string;
 };
 
@@ -3866,8 +3864,6 @@ function PlayersSection({ admin }: { admin: AdminUser }) {
   const [editForm, setEditForm] = useState({
     username: "",
     rank: "",
-    points: 0,
-    money: 0,
   });
 
   const fetchPlayers = useCallback((username?: string) => {
@@ -3901,8 +3897,6 @@ function PlayersSection({ admin }: { admin: AdminUser }) {
     setEditForm({
       username: player.username,
       rank: player.rank,
-      points: player.points ?? 0,
-      money: player.money ?? 0,
     });
   };
 
@@ -3993,7 +3987,7 @@ function PlayersSection({ admin }: { admin: AdminUser }) {
                   <X className="w-5 h-5" />
                 </button>
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4">
                 <div>
                   <label className="text-xs text-gray-400 block mb-1">
                     Rank
@@ -4002,46 +3996,6 @@ function PlayersSection({ admin }: { admin: AdminUser }) {
                     value={editForm.rank}
                     onChange={(e) =>
                       setEditForm((p) => ({ ...p, rank: e.target.value }))
-                    }
-                    className="w-full px-3 py-2 rounded-lg text-sm text-white outline-none"
-                    style={{
-                      background: "rgba(255,255,255,0.05)",
-                      border: "1px solid rgba(255,255,255,0.1)",
-                    }}
-                  />
-                </div>
-                <div>
-                  <label className="text-xs text-gray-400 block mb-1">
-                    Points
-                  </label>
-                  <input
-                    type="number"
-                    value={editForm.points}
-                    onChange={(e) =>
-                      setEditForm((p) => ({
-                        ...p,
-                        points: parseInt(e.target.value) || 0,
-                      }))
-                    }
-                    className="w-full px-3 py-2 rounded-lg text-sm text-white outline-none"
-                    style={{
-                      background: "rgba(255,255,255,0.05)",
-                      border: "1px solid rgba(255,255,255,0.1)",
-                    }}
-                  />
-                </div>
-                <div>
-                  <label className="text-xs text-gray-400 block mb-1">
-                    Money (IDR)
-                  </label>
-                  <input
-                    type="number"
-                    value={editForm.money}
-                    onChange={(e) =>
-                      setEditForm((p) => ({
-                        ...p,
-                        money: parseInt(e.target.value) || 0,
-                      }))
                     }
                     className="w-full px-3 py-2 rounded-lg text-sm text-white outline-none"
                     style={{
@@ -4069,14 +4023,6 @@ function PlayersSection({ admin }: { admin: AdminUser }) {
                   <span className="flex items-center gap-1">
                     <Crown className="w-3.5 h-3.5 text-amber-400" />
                     {player.rank}
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <Star className="w-3.5 h-3.5 text-blue-400" />
-                    {(player.points ?? 0).toLocaleString()} Points
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <Coins className="w-3.5 h-3.5 text-yellow-400" />
-                    Rp {(player.money ?? 0).toLocaleString()}
                   </span>
                 </div>
               </div>
