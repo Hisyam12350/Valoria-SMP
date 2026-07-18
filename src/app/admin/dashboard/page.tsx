@@ -150,7 +150,7 @@ export default function AdminDashboard() {
 
   return (
     <div
-      className="flex min-h-screen"
+      className="flex h-screen overflow-hidden"
       style={{
         background: "#080c18",
         fontFamily: "Geist, system-ui, sans-serif",
@@ -158,7 +158,7 @@ export default function AdminDashboard() {
     >
       {/* ── Sidebar ── */}
       <aside
-        className="flex flex-col transition-all duration-300 flex-shrink-0"
+        className="flex flex-col transition-all duration-300 flex-shrink-0 h-full"
         style={{
           width: sidebarOpen ? "240px" : "64px",
           background: "rgba(10,14,26,0.95)",
@@ -243,7 +243,7 @@ export default function AdminDashboard() {
       </aside>
 
       {/* ── Main content ── */}
-      <div className="flex-1 flex flex-col min-w-0">
+      <div className="flex-1 flex flex-col min-w-0 h-full">
         {/* Topbar */}
         <header
           className="flex items-center justify-between px-6 py-4"
