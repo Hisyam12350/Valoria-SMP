@@ -2,13 +2,13 @@
   "version": 1,
   "functions": {
     "/api/admin/content": {},
-    "/api/admin/create-admin": {},
-    "/api/admin/discounts": {},
-    "/api/admin/login": {},
-    "/api/admin/players": {},
     "/api/admin/logout": {},
-    "/api/admin/setup": {},
+    "/api/admin/login": {},
+    "/api/admin/create-admin": {},
+    "/api/admin/players": {},
+    "/api/admin/discounts": {},
     "/api/admin/verify-session": {},
+    "/api/admin/setup": {},
     "/api/site-content": {},
     "/api/top-voters": {},
     "/_middleware": {

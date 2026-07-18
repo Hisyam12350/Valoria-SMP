@@ -3901,8 +3901,8 @@ function PlayersSection({ admin }: { admin: AdminUser }) {
     setEditForm({
       username: player.username,
       rank: player.rank,
-      points: player.points,
-      money: player.money,
+      points: player.points ?? 0,
+      money: player.money ?? 0,
     });
   };
 
@@ -4072,11 +4072,11 @@ function PlayersSection({ admin }: { admin: AdminUser }) {
                   </span>
                   <span className="flex items-center gap-1">
                     <Star className="w-3.5 h-3.5 text-blue-400" />
-                    {player.points.toLocaleString()} Points
+                    {(player.points ?? 0).toLocaleString()} Points
                   </span>
                   <span className="flex items-center gap-1">
                     <Coins className="w-3.5 h-3.5 text-yellow-400" />
-                    Rp {player.money.toLocaleString()}
+                    Rp {(player.money ?? 0).toLocaleString()}
                   </span>
                 </div>
               </div>
