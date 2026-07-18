@@ -160,13 +160,17 @@ export async function POST(req: NextRequest) {
     // Set cookie via header langsung — lebih kompatibel di semua browser/HP
     const maxAge = SESSION_DURATION_HOURS * 60 * 60;
     const isProduction = process.env.NODE_ENV === "production";
+    // Cek jika koneksi menggunakan HTTPS
+    const proto = req.headers.get("x-forwarded-proto") || (req.headers.get("origin")?.startsWith("https://") ? "https" : "http");
+    const isSecure = isProduction && proto === "https";
+
     const cookieValue = [
       `${SESSION_COOKIE}=${token}`,
       `Max-Age=${maxAge}`,
       `Path=/`,
       `HttpOnly`,
       `SameSite=Lax`,
-      isProduction ? `Secure` : "",
+      isSecure ? `Secure` : "",
     ]
       .filter(Boolean)
       .join("; ");
