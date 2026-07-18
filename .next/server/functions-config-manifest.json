@@ -1,0 +1,24 @@
+{
+  "version": 1,
+  "functions": {
+    "/api/admin/create-admin": {},
+    "/api/admin/logout": {},
+    "/api/admin/content": {},
+    "/api/admin/discounts": {},
+    "/api/admin/players": {},
+    "/api/admin/login": {},
+    "/api/admin/verify-session": {},
+    "/api/admin/setup": {},
+    "/api/site-content": {},
+    "/api/top-voters": {},
+    "/_middleware": {
+      "runtime": "nodejs",
+      "matchers": [
+        {
+          "regexp": "^(?:\\/(_next\\/data\\/[^/]{1,}))?\\/admin(?:\\/((?:[^\\/#\\?]+?)(?:\\/(?:[^\\/#\\?]+?))*))?(\\.json|\\.rsc|\\.segments\\/.+\\.segment\\.rsc)?[\\/#\\?]?$",
+          "originalSource": "/admin/:path*"
+        }
+      ]
+    }
+  }
+}
