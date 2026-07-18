@@ -1,0 +1,9 @@
+{
+  "/api/check-player/route": "app/api/check-player/route.js",
+  "/api/player/transactions/route": "app/api/player/transactions/route.js",
+  "/profile/page": "app/profile/page.js",
+  "/vote/page": "app/vote/page.js",
+  "/server-info/page": "app/server-info/page.js",
+  "/page": "app/page.js",
+  "/store/page": "app/store/page.js"
+}
