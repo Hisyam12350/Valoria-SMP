@@ -1,6 +1,6 @@
 // Server Configuration
 export const SERVER_IP = 'play.valoriasmp.my.id';
-export const BEDROCK_PORT = '19230';
+export const BEDROCK_PORT = '19132';
 // WHATSAPP_NUMBER removed — payment now handled by Midtrans
 export const DISCORD_LINK = 'https://discord.gg/Z2cDERrc6Z';
 // WHATSAPP_GROUP removed — payment now handled by Midtrans

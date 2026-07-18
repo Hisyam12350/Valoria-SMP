@@ -26,54 +26,6 @@
         "x-next-revalidate-tag-token"
       ]
     },
-    "/profile": {
-      "experimentalBypassFor": [
-        {
-          "type": "header",
-          "key": "next-action"
-        },
-        {
-          "type": "header",
-          "key": "content-type",
-          "value": "multipart/form-data;.*"
-        }
-      ],
-      "initialRevalidateSeconds": false,
-      "srcRoute": "/profile",
-      "dataRoute": "/profile.rsc",
-      "allowHeader": [
-        "host",
-        "x-matched-path",
-        "x-prerender-revalidate",
-        "x-prerender-revalidate-if-generated",
-        "x-next-revalidated-tags",
-        "x-next-revalidate-tag-token"
-      ]
-    },
-    "/server-info": {
-      "experimentalBypassFor": [
-        {
-          "type": "header",
-          "key": "next-action"
-        },
-        {
-          "type": "header",
-          "key": "content-type",
-          "value": "multipart/form-data;.*"
-        }
-      ],
-      "initialRevalidateSeconds": false,
-      "srcRoute": "/server-info",
-      "dataRoute": "/server-info.rsc",
-      "allowHeader": [
-        "host",
-        "x-matched-path",
-        "x-prerender-revalidate",
-        "x-prerender-revalidate-if-generated",
-        "x-next-revalidated-tags",
-        "x-next-revalidate-tag-token"
-      ]
-    },
     "/social": {
       "experimentalBypassFor": [
         {
@@ -98,7 +50,7 @@
         "x-next-revalidate-tag-token"
       ]
     },
-    "/achievements": {
+    "/staff": {
       "experimentalBypassFor": [
         {
           "type": "header",
@@ -111,32 +63,8 @@
         }
       ],
       "initialRevalidateSeconds": false,
-      "srcRoute": "/achievements",
-      "dataRoute": "/achievements.rsc",
-      "allowHeader": [
-        "host",
-        "x-matched-path",
-        "x-prerender-revalidate",
-        "x-prerender-revalidate-if-generated",
-        "x-next-revalidated-tags",
-        "x-next-revalidate-tag-token"
-      ]
-    },
-    "/team": {
-      "experimentalBypassFor": [
-        {
-          "type": "header",
-          "key": "next-action"
-        },
-        {
-          "type": "header",
-          "key": "content-type",
-          "value": "multipart/form-data;.*"
-        }
-      ],
-      "initialRevalidateSeconds": false,
-      "srcRoute": "/team",
-      "dataRoute": "/team.rsc",
+      "srcRoute": "/staff",
+      "dataRoute": "/staff.rsc",
       "allowHeader": [
         "host",
         "x-matched-path",
@@ -170,6 +98,54 @@
         "x-next-revalidate-tag-token"
       ]
     },
+    "/payment/instruction": {
+      "experimentalBypassFor": [
+        {
+          "type": "header",
+          "key": "next-action"
+        },
+        {
+          "type": "header",
+          "key": "content-type",
+          "value": "multipart/form-data;.*"
+        }
+      ],
+      "initialRevalidateSeconds": false,
+      "srcRoute": "/payment/instruction",
+      "dataRoute": "/payment/instruction.rsc",
+      "allowHeader": [
+        "host",
+        "x-matched-path",
+        "x-prerender-revalidate",
+        "x-prerender-revalidate-if-generated",
+        "x-next-revalidated-tags",
+        "x-next-revalidate-tag-token"
+      ]
+    },
+    "/payment/success": {
+      "experimentalBypassFor": [
+        {
+          "type": "header",
+          "key": "next-action"
+        },
+        {
+          "type": "header",
+          "key": "content-type",
+          "value": "multipart/form-data;.*"
+        }
+      ],
+      "initialRevalidateSeconds": false,
+      "srcRoute": "/payment/success",
+      "dataRoute": "/payment/success.rsc",
+      "allowHeader": [
+        "host",
+        "x-matched-path",
+        "x-prerender-revalidate",
+        "x-prerender-revalidate-if-generated",
+        "x-next-revalidated-tags",
+        "x-next-revalidate-tag-token"
+      ]
+    },
     "/store": {
       "experimentalBypassFor": [
         {
@@ -185,6 +161,30 @@
       "initialRevalidateSeconds": false,
       "srcRoute": "/store",
       "dataRoute": "/store.rsc",
+      "allowHeader": [
+        "host",
+        "x-matched-path",
+        "x-prerender-revalidate",
+        "x-prerender-revalidate-if-generated",
+        "x-next-revalidated-tags",
+        "x-next-revalidate-tag-token"
+      ]
+    },
+    "/": {
+      "experimentalBypassFor": [
+        {
+          "type": "header",
+          "key": "next-action"
+        },
+        {
+          "type": "header",
+          "key": "content-type",
+          "value": "multipart/form-data;.*"
+        }
+      ],
+      "initialRevalidateSeconds": false,
+      "srcRoute": "/",
+      "dataRoute": "/index.rsc",
       "allowHeader": [
         "host",
         "x-matched-path",
@@ -218,7 +218,7 @@
         "x-next-revalidate-tag-token"
       ]
     },
-    "/admin": {
+    "/admin/setup": {
       "experimentalBypassFor": [
         {
           "type": "header",
@@ -231,8 +231,8 @@
         }
       ],
       "initialRevalidateSeconds": false,
-      "srcRoute": "/admin",
-      "dataRoute": "/admin.rsc",
+      "srcRoute": "/admin/setup",
+      "dataRoute": "/admin/setup.rsc",
       "allowHeader": [
         "host",
         "x-matched-path",
@@ -290,7 +290,7 @@
         "x-next-revalidate-tag-token"
       ]
     },
-    "/admin/setup": {
+    "/admin": {
       "experimentalBypassFor": [
         {
           "type": "header",
@@ -303,8 +303,8 @@
         }
       ],
       "initialRevalidateSeconds": false,
-      "srcRoute": "/admin/setup",
-      "dataRoute": "/admin/setup.rsc",
+      "srcRoute": "/admin",
+      "dataRoute": "/admin.rsc",
       "allowHeader": [
         "host",
         "x-matched-path",
@@ -314,7 +314,7 @@
         "x-next-revalidate-tag-token"
       ]
     },
-    "/": {
+    "/achievements": {
       "experimentalBypassFor": [
         {
           "type": "header",
@@ -327,8 +327,8 @@
         }
       ],
       "initialRevalidateSeconds": false,
-      "srcRoute": "/",
-      "dataRoute": "/index.rsc",
+      "srcRoute": "/achievements",
+      "dataRoute": "/achievements.rsc",
       "allowHeader": [
         "host",
         "x-matched-path",
@@ -338,7 +338,7 @@
         "x-next-revalidate-tag-token"
       ]
     },
-    "/payment/instruction": {
+    "/server-info": {
       "experimentalBypassFor": [
         {
           "type": "header",
@@ -351,8 +351,8 @@
         }
       ],
       "initialRevalidateSeconds": false,
-      "srcRoute": "/payment/instruction",
-      "dataRoute": "/payment/instruction.rsc",
+      "srcRoute": "/server-info",
+      "dataRoute": "/server-info.rsc",
       "allowHeader": [
         "host",
         "x-matched-path",
@@ -362,7 +362,7 @@
         "x-next-revalidate-tag-token"
       ]
     },
-    "/staff": {
+    "/profile": {
       "experimentalBypassFor": [
         {
           "type": "header",
@@ -375,8 +375,8 @@
         }
       ],
       "initialRevalidateSeconds": false,
-      "srcRoute": "/staff",
-      "dataRoute": "/staff.rsc",
+      "srcRoute": "/profile",
+      "dataRoute": "/profile.rsc",
       "allowHeader": [
         "host",
         "x-matched-path",
@@ -386,7 +386,7 @@
         "x-next-revalidate-tag-token"
       ]
     },
-    "/payment/success": {
+    "/team": {
       "experimentalBypassFor": [
         {
           "type": "header",
@@ -399,8 +399,8 @@
         }
       ],
       "initialRevalidateSeconds": false,
-      "srcRoute": "/payment/success",
-      "dataRoute": "/payment/success.rsc",
+      "srcRoute": "/team",
+      "dataRoute": "/team.rsc",
       "allowHeader": [
         "host",
         "x-matched-path",

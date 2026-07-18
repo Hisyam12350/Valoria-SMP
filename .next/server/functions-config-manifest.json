@@ -2,15 +2,15 @@
   "version": 1,
   "functions": {
     "/api/admin/content": {},
-    "/api/admin/logout": {},
-    "/api/admin/login": {},
-    "/api/admin/setup": {},
-    "/api/admin/players": {},
-    "/api/admin/verify-session": {},
+    "/api/admin/create-admin": {},
     "/api/admin/discounts": {},
+    "/api/admin/login": {},
+    "/api/admin/players": {},
+    "/api/admin/logout": {},
+    "/api/admin/setup": {},
+    "/api/admin/verify-session": {},
     "/api/site-content": {},
     "/api/top-voters": {},
-    "/api/admin/create-admin": {},
     "/_middleware": {
       "runtime": "nodejs",
       "matchers": [
