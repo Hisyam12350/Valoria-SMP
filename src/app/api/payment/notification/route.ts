@@ -172,10 +172,14 @@ async function handleSuccessfulPayment({
 
       console.log(`[RCON] ✅ Give ${amount} points to ${username}`);
 
-      // Update points in Supabase players table
-      const { data: playerPoints } = await supabaseAdmin.from("players").select("points").eq("username", username).maybeSingle();
-      const currentPoints = playerPoints ? (playerPoints.points ?? 0) : 0;
-      await supabaseAdmin.from("players").update({ points: currentPoints + amount }).eq("username", username);
+      // Try update points in Supabase players table if column exists
+      try {
+        const { data: playerPoints } = await supabaseAdmin.from("players").select("points").eq("username", username).maybeSingle();
+        if (playerPoints && playerPoints.points !== undefined) {
+          const currentPoints = playerPoints.points ?? 0;
+          await supabaseAdmin.from("players").update({ points: currentPoints + amount }).eq("username", username);
+        }
+      } catch {}
 
     } else if (category === "money") {
       // slug format: "money-starter", "money-basic", dll
@@ -201,10 +205,14 @@ async function handleSuccessfulPayment({
 
       console.log(`[RCON] ✅ Give ${amount} money to ${username}`);
 
-      // Update money in Supabase players table
-      const { data: playerMoney } = await supabaseAdmin.from("players").select("money").eq("username", username).maybeSingle();
-      const currentMoney = playerMoney ? (playerMoney.money ?? 0) : 0;
-      await supabaseAdmin.from("players").update({ money: currentMoney + amount }).eq("username", username);
+      // Try update money in Supabase players table if column exists
+      try {
+        const { data: playerMoney } = await supabaseAdmin.from("players").select("money").eq("username", username).maybeSingle();
+        if (playerMoney && playerMoney.money !== undefined) {
+          const currentMoney = playerMoney.money ?? 0;
+          await supabaseAdmin.from("players").update({ money: currentMoney + amount }).eq("username", username);
+        }
+      } catch {}
 
     } else if (category === "rank") {
       // slug langsung nama rank, misal: "starter", "noble", dll

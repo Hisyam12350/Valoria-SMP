@@ -1,16 +1,16 @@
 {
   "version": 1,
   "functions": {
-    "/api/admin/discounts": {},
-    "/api/admin/logout": {},
-    "/api/admin/content": {},
-    "/api/admin/players": {},
-    "/api/admin/setup": {},
-    "/api/admin/verify-session": {},
     "/api/admin/create-admin": {},
+    "/api/admin/content": {},
+    "/api/admin/logout": {},
     "/api/admin/login": {},
-    "/api/top-voters": {},
+    "/api/admin/players": {},
+    "/api/admin/verify-session": {},
+    "/api/admin/discounts": {},
+    "/api/admin/setup": {},
     "/api/site-content": {},
+    "/api/top-voters": {},
     "/_middleware": {
       "runtime": "nodejs",
       "matchers": [
