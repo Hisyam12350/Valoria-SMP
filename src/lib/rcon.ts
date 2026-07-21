@@ -1,13 +1,18 @@
 import { Rcon } from "rcon-client";
 
-const RCON_HOST = process.env.MINECRAFT_RCON_HOST ?? "216.163.186.78";
-const RCON_PORT = parseInt(process.env.MINECRAFT_RCON_PORT ?? "22556");
-const RCON_PASSWORD = process.env.MINECRAFT_RCON_PASSWORD!;
+const RCON_HOST = process.env.MINECRAFT_RCON_HOST ?? process.env.RCON_HOST ?? "216.163.186.78";
+const RCON_PORT = parseInt(process.env.MINECRAFT_RCON_PORT ?? process.env.RCON_PORT ?? "22556");
+const RCON_PASSWORD = process.env.MINECRAFT_RCON_PASSWORD ?? process.env.RCON_PASSWORD ?? "";
 
 /**
  * Kirim satu command ke Minecraft server via RCON
  */
 export async function sendRconCommand(command: string): Promise<string> {
+  if (!RCON_PASSWORD) {
+    console.error("[RCON] ERROR: RCON_PASSWORD or MINECRAFT_RCON_PASSWORD is not configured!");
+    throw new Error("RCON password is missing");
+  }
+
   const rcon = new Rcon({
     host: RCON_HOST,
     port: RCON_PORT,
@@ -30,8 +35,8 @@ export async function sendRconCommand(command: string): Promise<string> {
  * Command asli: points give <username> <amount>
  */
 export async function givePoints(username: string, amount: number): Promise<string> {
-  // PERBAIKAN: Hapus tanda petik pada ${amount} agar terbaca sebagai angka murni
-  return sendRconCommand(`points give ${username} ${amount}`);
+  // Tambah tanda petik pada "${username}" untuk amankan Bedrock name (.username) & karakter khusus
+  return sendRconCommand(`points give "${username}" ${amount}`);
 }
 
 /**
@@ -39,8 +44,8 @@ export async function givePoints(username: string, amount: number): Promise<stri
  * Command: /eco give <username> <amount>
  */
 export async function giveMoney(username: string, amount: number): Promise<string> {
-  // PERBAIKAN: Tambah tanda petik pada "${username}" untuk amankan karakter khusus/titik
-  return sendRconCommand(`eco give ${username} ${amount}`);
+  // Tambah tanda petik pada "${username}" untuk amankan Bedrock name (.username) & karakter khusus
+  return sendRconCommand(`eco give "${username}" ${amount}`);
 }
 
 /**
