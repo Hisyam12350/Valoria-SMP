@@ -7,16 +7,7 @@ export async function GET() {
     const apiKey = process.env.MINECRAFTMP_API_KEY;
 
     if (!apiKey) {
-      console.warn("WARNING: MINECRAFTMP_API_KEY is not configured! Returning mock voters for preview.");
-      const mockVoters = [
-        { rank: 1, name: "FatihMC", votes: 45, skinHead: "https://mc-heads.net/avatar/FatihMC/64" },
-        { rank: 2, name: "ZennMC", votes: 38, skinHead: "https://mc-heads.net/avatar/ZennMC/64" },
-        { rank: 3, name: "Lerzy", votes: 32, skinHead: "https://mc-heads.net/avatar/Lerzy/64" },
-        { rank: 4, name: "Lyno", votes: 27, skinHead: "https://mc-heads.net/avatar/Lyno/64" },
-        { rank: 5, name: "Ravex", votes: 21, skinHead: "https://mc-heads.net/avatar/Ravex/64" },
-        { rank: 6, name: "WasingMC", votes: 18, skinHead: "https://mc-heads.net/avatar/WasingMC/64" },
-      ];
-      return NextResponse.json({ voters: mockVoters, isMock: true });
+      return NextResponse.json({ error: 'API key not configured' }, { status: 500 });
     }
 
     // Fetch top voters from MinecraftMP (current month)
