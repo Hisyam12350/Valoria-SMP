@@ -92,8 +92,6 @@ export async function POST(req: Request) {
         .insert({
           username: mcPlayer.username,
           rank: resolvedRank,
-          points: 0,
-          money: 0,
         })
         .select()
         .single();
@@ -128,8 +126,6 @@ export async function POST(req: Request) {
       player: supabasePlayer || {
         username: mcPlayer.username,
         rank: resolvedRank,
-        points: 0,
-        money: 0
       }
     });
   } catch (error: any) {

@@ -103,14 +103,16 @@ export async function PUT(req: NextRequest) {
       result = data;
     } else {
       // Buat pemain baru
+      const insertData: any = {
+        username,
+        rank: rank || "Member",
+      };
+      if (points !== undefined) insertData.points = points;
+      if (money !== undefined) insertData.money = money;
+
       const { data, error } = await supabaseAdmin
         .from("players")
-        .insert({
-          username,
-          rank: rank || "Member",
-          points: points || 0,
-          money: money || 0,
-        })
+        .insert(insertData)
         .select()
         .single();
 
