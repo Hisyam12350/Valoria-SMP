@@ -3,12 +3,12 @@
   "functions": {
     "/api/admin/content": {},
     "/api/admin/create-admin": {},
+    "/api/admin/discounts": {},
     "/api/admin/logout": {},
     "/api/admin/verify-session": {},
-    "/api/admin/setup": {},
-    "/api/admin/discounts": {},
     "/api/admin/players": {},
     "/api/admin/login": {},
+    "/api/admin/setup": {},
     "/api/site-content": {},
     "/api/top-voters": {},
     "/_middleware": {
