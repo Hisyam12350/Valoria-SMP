@@ -150,23 +150,43 @@ async function handleSuccessfulPayment({
 
   try {
     if (category === "points") {
-      // slug format: "points-starter", "points-basic", dll
       const rankSlug = slug.replace("points-", "");
+      let amount = 0;
 
-      const { data: storeData } = await supabaseAdmin
-        .from("site_content")
-        .select("content_value")
-        .eq("content_key", "points_store")
-        .single();
+      // 1. Ambil dari site_content jika ada
+      try {
+        const { data: storeData } = await supabaseAdmin
+          .from("site_content")
+          .select("content_value")
+          .eq("content_key", "points_store")
+          .maybeSingle();
 
-      const pointsStore = Array.isArray(storeData?.content_value)
-        ? storeData.content_value
-        : JSON.parse(storeData?.content_value ?? "[]");
+        if (storeData?.content_value) {
+          const pointsStore = Array.isArray(storeData.content_value)
+            ? storeData.content_value
+            : JSON.parse(typeof storeData.content_value === "string" ? storeData.content_value : "[]");
 
-      const item = pointsStore.find((p: any) => p.slug === rankSlug);
-      if (!item) throw new Error(`Points item tidak ditemukan: ${rankSlug}`);
+          const item = pointsStore.find((p: any) => p.slug === rankSlug || p.slug === slug);
+          if (item && item.points !== undefined) {
+            amount = typeof item.points === "number" ? item.points : parseFormattedNumber(String(item.points));
+          }
+        }
+      } catch (e) {
+        console.warn("[PAYMENT_SUCCESS] Failed to read points_store:", e);
+      }
 
-      const amount = parseFormattedNumber(item.points);
+      // 2. Fallback: parse angka dari slug (misal: "points-2500" -> 2500)
+      if (amount <= 0) {
+        const matches = slug.match(/\d+/g);
+        if (matches && matches.length > 0) {
+          amount = parseInt(matches.join(""), 10);
+        }
+      }
+
+      if (amount <= 0) {
+        throw new Error(`Jumlah points tidak valid untuk slug: ${slug}`);
+      }
+
       rconResponse = await givePoints(username, amount);
       rconSuccess = true;
 
@@ -182,24 +202,43 @@ async function handleSuccessfulPayment({
       } catch {}
 
     } else if (category === "money") {
-      // slug format: "money-starter", "money-basic", dll
       const rankSlug = slug.replace("money-", "");
+      let amount = 0;
 
-      const { data: storeData } = await supabaseAdmin
-        .from("site_content")
-        .select("content_value")
-        .eq("content_key", "money")
-        .single();
+      // 1. Ambil dari site_content jika ada
+      try {
+        const { data: storeData } = await supabaseAdmin
+          .from("site_content")
+          .select("content_value")
+          .eq("content_key", "money")
+          .maybeSingle();
 
-      const moneyStore = Array.isArray(storeData?.content_value)
-        ? storeData.content_value
-        : JSON.parse(storeData?.content_value ?? "[]");
+        if (storeData?.content_value) {
+          const moneyStore = Array.isArray(storeData.content_value)
+            ? storeData.content_value
+            : JSON.parse(typeof storeData.content_value === "string" ? storeData.content_value : "[]");
 
-      const item = moneyStore.find((m: any) => m.slug === rankSlug);
-      if (!item) throw new Error(`Money item tidak ditemukan: ${rankSlug}`);
+          const item = moneyStore.find((m: any) => m.slug === rankSlug || m.slug === slug);
+          if (item && item.money !== undefined) {
+            amount = typeof item.money === "number" ? item.money : parseFormattedNumber(String(item.money).replace("$", ""));
+          }
+        }
+      } catch (e) {
+        console.warn("[PAYMENT_SUCCESS] Failed to read money store:", e);
+      }
 
-      // Parse "$100.000" → 100000
-      const amount = parseFormattedNumber(item.money.replace("$", ""));
+      // 2. Fallback: parse angka dari slug (misal: "money-80000" -> 80000)
+      if (amount <= 0) {
+        const matches = slug.match(/\d+/g);
+        if (matches && matches.length > 0) {
+          amount = parseInt(matches.join(""), 10);
+        }
+      }
+
+      if (amount <= 0) {
+        throw new Error(`Jumlah money tidak valid untuk slug: ${slug}`);
+      }
+
       rconResponse = await giveMoney(username, amount);
       rconSuccess = true;
 

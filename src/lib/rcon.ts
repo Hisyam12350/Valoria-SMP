@@ -35,8 +35,8 @@ export async function sendRconCommand(command: string): Promise<string> {
  * Command asli: points give <username> <amount>
  */
 export async function givePoints(username: string, amount: number): Promise<string> {
-  // Tambah tanda petik pada "${username}" untuk amankan Bedrock name (.username) & karakter khusus
-  return sendRconCommand(`points give "${username}" ${amount}`);
+  const cleanUser = username.trim();
+  return sendRconCommand(`points give ${cleanUser} ${amount}`);
 }
 
 /**
@@ -44,8 +44,8 @@ export async function givePoints(username: string, amount: number): Promise<stri
  * Command: /eco give <username> <amount>
  */
 export async function giveMoney(username: string, amount: number): Promise<string> {
-  // Tambah tanda petik pada "${username}" untuk amankan Bedrock name (.username) & karakter khusus
-  return sendRconCommand(`eco give "${username}" ${amount}`);
+  const cleanUser = username.trim();
+  return sendRconCommand(`eco give ${cleanUser} ${amount}`);
 }
 
 /**
