@@ -74,6 +74,13 @@ export async function POST(req: Request) {
       }
     }
 
+    // Helper untuk membandingkan hirarki rank (makin kecil indeks = makin tinggi rank)
+    const getRankIndex = (r: string) => {
+      const normalized = (r || 'default').toLowerCase() === 'crystal' ? 'crystall' : (r || 'default').toLowerCase();
+      const idx = RANK_HIERARCHY.indexOf(normalized);
+      return idx === -1 ? 999 : idx;
+    };
+
     // 2. Hubungkan & Singkronisasikan ke Supabase tabel 'players'
     let { data: supabasePlayer, error: sbError } = await supabaseAdmin
       .from("players")
@@ -85,13 +92,21 @@ export async function POST(req: Request) {
       console.error("Supabase fetch player error:", sbError);
     }
 
+    // Tentukan rank terbaik (ambil yang lebih tinggi antara MariaDB dan Supabase)
+    let finalRank = resolvedRank;
+    if (supabasePlayer && supabasePlayer.rank) {
+      if (getRankIndex(supabasePlayer.rank) < getRankIndex(resolvedRank)) {
+        finalRank = supabasePlayer.rank.toLowerCase() === 'crystal' ? 'crystall' : supabasePlayer.rank.toLowerCase();
+      }
+    }
+
     // Jika belum ada di tabel players Supabase, buat baru otomatis
     if (!supabasePlayer) {
       const { data: newPlayer, error: insertError } = await supabaseAdmin
         .from("players")
         .insert({
           username: mcPlayer.username,
-          rank: resolvedRank,
+          rank: finalRank,
         })
         .select()
         .single();
@@ -101,11 +116,11 @@ export async function POST(req: Request) {
       } else {
         supabasePlayer = newPlayer;
       }
-    } else if (supabasePlayer.rank !== resolvedRank) {
-      // Jika pangkat di Supabase tidak cocok dengan pangkat ter-update dari LuckPerms, update di Supabase
+    } else if (supabasePlayer.rank !== finalRank) {
+      // Update di Supabase dengan rank tertinggi yang valid
       const { data: updatedPlayer, error: updateError } = await supabaseAdmin
         .from("players")
-        .update({ rank: resolvedRank })
+        .update({ rank: finalRank })
         .eq("username", mcPlayer.username)
         .select()
         .single();

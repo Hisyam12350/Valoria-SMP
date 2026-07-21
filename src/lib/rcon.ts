@@ -49,7 +49,10 @@ export async function giveMoney(username: string, amount: number): Promise<strin
  */
 export async function giveRank(username: string, rank: string): Promise<string> {
   // PERBAIKAN: Tambah tanda petik pada "${username}" untuk amankan karakter khusus/titik
-  return sendRconCommand(`lp user "${username}" parent set ${rank}`);
+  const res = await sendRconCommand(`lp user "${username}" parent set ${rank}`);
+  // Paksa LuckPerms menyimpan perubahan ke MariaDB secara instan
+  await sendRconCommand(`lp sync`).catch(() => {});
+  return res;
 }
 
 /**
